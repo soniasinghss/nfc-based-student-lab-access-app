@@ -4,7 +4,7 @@
 * [Project Overview](#po)
 * [Team Members and Roles](#team)
 * [System Architecure](#sa)
-* * [Technologies](#tech)
+* [Technologies](#tech)
 
 ## <a name="po"></a>Project Overview
 The NFC-Based Student Lab Access System is a secure and intelligent solution designed to modernize lab room access for ENCS students. Instead of manually entering room codes, students, can simply tap their NFC-enabled student card on a reader installed at the lab entrance to unlock the door.
