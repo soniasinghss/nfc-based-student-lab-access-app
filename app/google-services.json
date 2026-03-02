@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "716004367048",
+    "firebase_url": "https://nfc-lab-access-app-default-rtdb.firebaseio.com",
+    "project_id": "nfc-lab-access-app",
+    "storage_bucket": "nfc-lab-access-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:716004367048:android:1ad6abb60b0e8f3d8123fd",
+        "android_client_info": {
+          "package_name": "com.example.nfc_based_student_lab_access_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3NBaYiioU96C540veMIrNN6dGHty4-Ns"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
