@@ -1,0 +1,103 @@
+#include <SPI.h>
+#include <MFRC522.h>
+
+// -------- Pins --------
+#define SS_PIN     5
+#define RST_PIN    22
+
+#define LED_GREEN  26
+#define LED_RED    14
+#define BUZZER_PIN 16
+
+// -------- RFID --------
+MFRC522 mfrc522(SS_PIN, RST_PIN);
+
+// Allowed UID
+//this one is manully entered(the white card)
+byte allowedUID[4] = {0x90, 0x54, 0x14, 0x37};
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  pinMode(LED_GREEN, OUTPUT);
+  pinMode(LED_RED, OUTPUT);
+
+  digitalWrite(LED_GREEN, LOW);
+  digitalWrite(LED_RED, LOW);
+
+  SPI.begin(18, 19, 23, 5);
+  mfrc522.PCD_Init();
+
+  // Attach buzzer (ESP32 Core 3.x)
+  ledcAttach(BUZZER_PIN, 2000, 8);
+
+  Serial.println("Scan Card...");
+}
+
+void loop() {
+
+  if (!mfrc522.PICC_IsNewCardPresent()) return;
+  if (!mfrc522.PICC_ReadCardSerial()) return;
+
+  Serial.print("Card UID: ");
+  for (byte i = 0; i < mfrc522.uid.size; i++) {
+    Serial.print(mfrc522.uid.uidByte[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.println();
+
+  bool match = true;
+
+  if (mfrc522.uid.size != 4) {
+    match = false;
+  } else {
+    for (byte i = 0; i < 4; i++) {
+      if (mfrc522.uid.uidByte[i] != allowedUID[i]) {
+        match = false;
+        break;
+      }
+    }
+  }
+
+  if (match) {
+    accessGranted();
+  } else {
+    accessDenied();
+  }
+
+  mfrc522.PICC_HaltA();
+  mfrc522.PCD_StopCrypto1();
+
+  delay(400);
+}
+
+void accessGranted() {
+  Serial.println("Access Granted");
+
+  digitalWrite(LED_GREEN, HIGH);
+  digitalWrite(LED_RED, LOW);
+
+  ledcWriteTone(BUZZER_PIN, 2000);
+  delay(120);
+  ledcWriteTone(BUZZER_PIN, 2500);
+  delay(120);
+  ledcWriteTone(BUZZER_PIN, 0);
+
+  delay(500);
+  digitalWrite(LED_GREEN, LOW);
+}
+
+void accessDenied() {
+  Serial.println("Access Denied");
+
+  digitalWrite(LED_RED, HIGH);
+  digitalWrite(LED_GREEN, LOW);
+
+  ledcWriteTone(BUZZER_PIN, 400);
+  delay(600);
+  ledcWriteTone(BUZZER_PIN, 0);
+
+  delay(500);
+  digitalWrite(LED_RED, LOW);
+}
