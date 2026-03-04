@@ -1,0 +1,86 @@
+#define IR_PINA 32
+#define IR_PINB 33
+
+#define LED_RED    14
+#define LED_GREEN  26
+
+int peopleCount = 0;
+char firstBeam = 0;
+
+unsigned long beamTimer = 0;
+//timeout periode
+const unsigned long beamTimeout = 400;
+
+void setup() {
+  pinMode(IR_PINA, INPUT_PULLUP);
+  pinMode(IR_PINB, INPUT_PULLUP);
+
+  pinMode(LED_RED, OUTPUT);
+  pinMode(LED_GREEN, OUTPUT);
+
+  Serial.begin(115200);
+  Serial.println("Robust IR Door Counter Ready");
+}
+
+void loop() {
+  //reading the input from the IR break beam sensors
+  bool a = digitalRead(IR_PINA);
+  bool b = digitalRead(IR_PINB);
+
+  //When the beam A is broken the green LED will be on
+  //when the beam B is broken the red LED will be on
+  digitalWrite(LED_GREEN, a == LOW ? LOW : HIGH);
+  digitalWrite(LED_RED,   b == LOW ? LOW : HIGH);
+
+  //this function is to detemine which beam got broken first
+  //then a timer is initialised to reset the first beam after the timeout.
+  if (firstBeam == 0) {
+    if (a == LOW) {
+      firstBeam = 'A';
+      beamTimer = millis();
+    }
+    else if (b == LOW) {
+      firstBeam = 'B';
+      beamTimer = millis();
+    }
+  }
+
+ // this is to count the people going inside the room
+ //if the first beam broken was beam A and beam B got broken as well then someone has entered the room
+  if (firstBeam == 'A' && b == LOW) {
+    peopleCount++;
+    Serial.print("ENTERED | Count: ");
+    Serial.println(peopleCount);
+    waitForClear();
+    firstBeam = 0;
+  }
+
+ // this is to count the people going out of the room
+ //if the first beam broken was beam B and beam A got broken as well then someone has left the room
+  if (firstBeam == 'B' && a == LOW) {
+    peopleCount--;
+    //this line is here to prevent the number of people to go to the negatives in case of error
+    if (peopleCount < 0) peopleCount = 0;
+    Serial.print("EXIT | Count: ");
+    Serial.println(peopleCount);
+    waitForClear();
+    firstBeam = 0;
+  }
+
+// this is for timeout reset
+//if a person trigers the first sensor only then doesnt enter or leave the room
+//the first beam value will be dropped and the sensors will reset.
+  if (firstBeam != 0 && (millis() - beamTimer > beamTimeout)) {
+    //Serial.println("Timeout - Resetting...");
+    firstBeam = 0;
+  }
+
+  delay(10);
+}
+//this is a window of time between the people
+//it is useful for when the sensors flicker or if the person has a bag on their back
+void waitForClear() {
+  while (digitalRead(IR_PINA) == LOW || digitalRead(IR_PINB) == LOW) {
+    delay(5);
+  }
+}
