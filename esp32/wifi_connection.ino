@@ -1,5 +1,8 @@
-#include <WiFi.h>
+// ESP32 WiFi connection test
+// Connects ESP32 to WiFi and prints IP address in Serial Monitor
+// Used for NFC Lab Access project communication setup
 
+#include <WiFi.h>
 const char* ssid = "samin";
 const char* password = "YOUR_WIFI_PASSWORD";
 
