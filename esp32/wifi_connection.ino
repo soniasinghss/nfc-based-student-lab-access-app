@@ -3,6 +3,7 @@
 // Used for NFC Lab Access project communication setup
 
 #include <WiFi.h>
+#include <HTTPClient.h>
 const char* ssid = "samin";
 const char* password = "YOUR_WIFI_PASSWORD";
 
