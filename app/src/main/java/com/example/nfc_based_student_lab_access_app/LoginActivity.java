@@ -4,45 +4,54 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
-import androidx.appcompat.app.AppCompatActivity;
-import com.google.firebase.auth.FirebaseAuth;
-import android.widget.CheckBox;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class LoginActivity extends AppCompatActivity {
 
     EditText etEmail, etPassword;
     Button btnLogin;
     TextView tvError;
-
     CheckBox cbKeepSignedIn;
 
     private FirebaseAuth mAuth;
+    private DatabaseReference mDatabase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-// Check if user is already logged in
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
-        if (mAuth.getCurrentUser() != null) {
-            // User already logged in, skip login screen
-            startActivity(new Intent(this, MainActivity.class));
-            finish();
-        }
         setContentView(R.layout.activity_login);
 
+        // Initialize Firebase Auth and Database
         mAuth = FirebaseAuth.getInstance();
+        mDatabase = FirebaseDatabase.getInstance().getReference();
 
         etEmail = findViewById(R.id.etEmail);
         etPassword = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
         tvError = findViewById(R.id.tvError);
-
-        btnLogin.setOnClickListener(v -> validateAndLogin());
         cbKeepSignedIn = findViewById(R.id.cbKeepSignedIn);
 
+        // Check if user is already logged in
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            // User is logged in, check their role and skip the login screen
+            checkRoleAndNavigate(currentUser.getUid());
+        }
+
+        btnLogin.setOnClickListener(v -> validateAndLogin());
     }
 
     // UI-1.1.2 - Validation
@@ -70,22 +79,57 @@ public class LoginActivity extends AppCompatActivity {
     private void loginWithFirebase(String email, String password) {
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener(authResult -> {
-                    saveSessionAndNavigate(authResult.getUser().getUid());
+                    String uid = authResult.getUser().getUid();
+                    saveSessionPreference();
+                    checkRoleAndNavigate(uid);
                 })
                 .addOnFailureListener(e -> {
                     tvError.setText("Login failed: " + e.getMessage());
                 });
     }
 
-    // UI-1.1.4 - Save session and go to dashboard
-    private void saveSessionAndNavigate(String uid) {
+    // Save the "Keep me signed in" preference
+    private void saveSessionPreference() {
         SharedPreferences prefs = getSharedPreferences("session", MODE_PRIVATE);
-        prefs.edit().putString("uid", uid).apply();
         prefs.edit().putBoolean("keepSignedIn", cbKeepSignedIn.isChecked()).apply();
+    }
 
+    // Query Realtime Database to determine role, then navigate
+    private void checkRoleAndNavigate(String uid) {
+        DatabaseReference adminsRef = mDatabase.child("admins");
 
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
+        adminsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                boolean isAdmin = false;
+
+                // Loop through the 'admins' node to see if the user's UID is listed
+                for (DataSnapshot child : snapshot.getChildren()) {
+                    String adminUid = child.getValue(String.class);
+                    if (uid.equals(child.getKey()) || uid.equals(adminUid)) {
+                        isAdmin = true;
+                        break;
+                    }
+                }
+
+                // Route to the appropriate Activity
+                Intent intent;
+                if (isAdmin) {
+                    intent = new Intent(LoginActivity.this, AdminActivity.class);
+                } else {
+                    intent = new Intent(LoginActivity.this, UserActivity.class);
+                }
+
+                // Clear the backstack so the user can't press 'back' to return to the login screen
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(intent);
+                finish();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                tvError.setText("Database error: " + error.getMessage());
+            }
+        });
     }
 }
