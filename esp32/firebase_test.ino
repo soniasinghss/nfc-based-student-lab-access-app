@@ -19,6 +19,8 @@ int peopleCount = 5;
 char firstBeam = 0;
 unsigned long beamTimer = 0;
 const unsigned long beamTimeout = 400;
+const unsigned long updateTimer=4000;
+unsigned long lastUpdate = 0;
 
 void setup() {
   delay(1000);
@@ -96,7 +98,15 @@ if (firstBeam == 'B' && a == LOW) {
 if (firstBeam != 0 && (millis() - beamTimer > beamTimeout)) {
   firstBeam = 0;
 }
+if (millis() - lastUpdate >= updateTimer) {
+  lastUpdate = millis();
+  update_Counter();
+  //Serial.print("updated");
 
+}
+ 
+}
+void update_Counter(){
   WiFiClientSecure client;
   client.setInsecure();
 
@@ -114,7 +124,7 @@ if (firstBeam != 0 && (millis() - beamTimer > beamTimeout)) {
   Serial.println(resp.length());
 
   http.end();
-  delay(10);  
+  delay(10); 
 }
 
 void waitForClear() {
