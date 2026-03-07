@@ -48,7 +48,8 @@ HTTPClient http;
 
 http.begin(client, "https://nfc-lab-access-app-default-rtdb.firebaseio.com/occupancy/lab-101/current_count.json");
 
-int code = http.PUT("5");
+int peopleCount = 5;
+int code = http.PUT(String(peopleCount));
 
 Serial.print("Firebase test code: ");
 Serial.println(code);
