@@ -13,7 +13,7 @@
         android:theme="@style/Theme.Nfcbasedstudentlabaccessapp">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".LoginActivity"
             android:exported="true"
             android:theme="@style/Theme.Nfcbasedstudentlabaccessapp">
             <intent-filter>
@@ -23,6 +23,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".AdminActivity"/>
+        <activity android:name=".UserActivity"/>
+        <activity android:name=".AccountOverviewActivity"/>
     </application>
 
 </manifest>
