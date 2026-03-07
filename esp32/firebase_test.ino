@@ -9,6 +9,7 @@
 const char* firebaseURL = "https://nfc-lab-access-app-default-rtdb.firebaseio.com/";
 const char* ssid = "samin";
 const char* password = "password123";
+int peopleCount = 5;
 
 void setup() {
   delay(1000);
@@ -40,29 +41,29 @@ void setup() {
    now = time(nullptr);
    retries--;
   }
-  Serial.println("\nTime synced!");
-  WiFiClientSecure client;
-client.setInsecure();
-
-HTTPClient http;
-
-http.begin(client, "https://nfc-lab-access-app-default-rtdb.firebaseio.com/occupancy/lab-101/current_count.json");
-
-int peopleCount = 5;
-int code = http.PUT(String(peopleCount));
-
-Serial.print("Firebase test code: ");
-Serial.println(code);
-
-String resp = http.getString();
-Serial.print("Firebase response length: ");
-Serial.println(resp.length());
-
-http.end();
-  
-
-  
+  Serial.println("\nTime synced!"); 
 }
 
 void loop() {
+  peopleCount++;
+  Serial.print("peopleCount = ");
+  Serial.println(peopleCount);
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+
+  http.begin(client, "https://nfc-lab-access-app-default-rtdb.firebaseio.com/occupancy/lab-101/current_count.json");
+
+  int code = http.PUT(String(peopleCount));
+
+  Serial.print("Firebase test code: ");
+  Serial.println(code);
+
+  String resp = http.getString();
+  Serial.print("Firebase response length: ");
+  Serial.println(resp.length());
+
+  http.end();
+  delay(10000);
 }
