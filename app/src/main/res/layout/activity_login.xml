@@ -1,92 +1,155 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="32dp"
-    android:background="#FFFFFF">
+    android:background="#F5F5F5"
+    android:fillViewport="true">
 
-    <TextView
-        android:text="Login"
-        android:textSize="36sp"
-        android:textStyle="bold"
-        android:textColor="#000000"
-        android:layout_marginTop="48dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-
-    <TextView
-        android:text="Use your ENCS Credentials"
-        android:textSize="14sp"
-        android:textColor="#4A90D9"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="32dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-
-    <TextView
-        android:text="ENCS Username"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:textColor="#000000"
-        android:layout_marginBottom="6dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-
-    <EditText
-        android:id="@+id/etEmail"
-        android:inputType="textEmailAddress"
-        android:background="@drawable/rounded_input"
-        android:padding="14dp"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"/>
+        android:orientation="vertical">
 
-    <TextView
-        android:text="ENCS Password"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:textColor="#000000"
-        android:layout_marginBottom="6dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        <!-- RED HERO HEADER -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:background="#932339"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingTop="48dp"
+            android:paddingBottom="32dp">
 
-    <EditText
-        android:id="@+id/etPassword"
-        android:inputType="textPassword"
-        android:background="@drawable/rounded_input"
-        android:padding="14dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"/>
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/conco"
+                android:contentDescription="Concordia University"
+                android:layout_marginBottom="12dp"
+                android:scaleType="fitCenter"/>
 
-    <CheckBox
-        android:id="@+id/cbKeepSignedIn"
-        android:text="Keep me signed in"
-        android:textSize="14sp"
-        android:textColor="#000000"
-        android:checked="true"
-        android:buttonTint="#3D5AFE"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lab Access Portal"
+                android:textColor="#FFFFFF"
+                android:textSize="24sp"
+                android:textStyle="bold"/>
 
-    <Button
-        android:id="@+id/btnLogin"
-        android:text="Login"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:backgroundTint="#2D3A8C"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:cornerRadius="12dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Concordia University"
+                android:textColor="#FFCCCC"
+                android:textSize="13sp"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
 
-    <TextView
-        android:id="@+id/tvError"
-        android:text=""
-        android:textColor="#FF0000"
-        android:layout_marginTop="8dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        <!-- FORM CARD -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
 
-</LinearLayout>
+            <!-- EMAIL LABEL -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="EMAIL ADDRESS"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#666666"
+                android:letterSpacing="0.08"
+                android:layout_marginBottom="6dp"/>
+
+            <!-- EMAIL INPUT -->
+            <EditText
+                android:id="@+id/etEmail"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:inputType="textEmailAddress"
+                android:hint="admin@concordia.ca"
+
+                android:textColor="#1A1A1A"
+                android:textSize="14sp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:background="@drawable/rounded_input"
+                android:layout_marginBottom="18dp"/>
+
+            <!-- PASSWORD LABEL -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PASSWORD"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#666666"
+                android:letterSpacing="0.08"
+                android:layout_marginBottom="6dp"/>
+
+            <!-- PASSWORD INPUT -->
+            <EditText
+                android:id="@+id/etPassword"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:inputType="textPassword"
+                android:hint="••••••••"
+
+                android:textColor="#1A1A1A"
+                android:textSize="14sp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:background="@drawable/rounded_input"
+                android:layout_marginBottom="16dp"/>
+
+            <!-- KEEP SIGNED IN -->
+            <CheckBox
+                android:id="@+id/cbKeepSignedIn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Keep me signed in"
+                android:textSize="13sp"
+                android:textColor="#444444"
+                android:buttonTint="#932339"
+                android:checked="true"
+                android:layout_marginBottom="24dp"/>
+
+            <!-- ERROR TEXT -->
+            <TextView
+                android:id="@+id/tvError"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#932339"
+                android:textSize="13sp"
+                android:background="#FDECEA"
+                android:padding="12dp"
+                android:visibility="gone"
+                android:layout_marginBottom="16dp"/>
+
+            <!-- LOGIN BUTTON -->
+            <Button
+                android:id="@+id/btnLogin"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Sign In"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:backgroundTint="#932339"
+                android:layout_marginBottom="20dp"/>
+
+            <!-- FOOTER NOTE -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Forgot your password? Contact IT Services"
+                android:textColor="#888888"
+                android:textSize="12sp"
+                android:gravity="center"/>
+
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
