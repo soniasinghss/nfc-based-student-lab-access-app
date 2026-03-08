@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -38,7 +37,7 @@ public class UserActivity extends AppCompatActivity {
 
     private DatabaseReference mDatabase;
     private FirebaseAuth mAuth;
-    private String nfcUid = null; // NFC card UID resolved from auth_uid
+    private String nfcUid = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,60 +51,45 @@ public class UserActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Initialize Firebase
-        mAuth = FirebaseAuth.getInstance();
+        mAuth     = FirebaseAuth.getInstance();
         mDatabase = FirebaseDatabase.getInstance().getReference();
 
-        // Null-check current user
         FirebaseUser user = mAuth.getCurrentUser();
-        if (user == null) {
-            goToLogin();
-            return;
-        }
+        if (user == null) { goToLogin(); return; }
 
-        // Setup toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("");
-        }
+        if (getSupportActionBar() != null) getSupportActionBar().setTitle("");
 
-        // Fetch student profile (name + NFC UID) by matching auth_uid in /authorized_uids
         fetchStudentProfile(user.getUid());
 
-        // Room click listener — uses LinearLayout id in updated XML
         findViewById(R.id.roomLab101).setOnClickListener(v -> checkRoomOccupancy("lab-101"));
-
-        // Account Overview card click
         findViewById(R.id.cvAccountOverview).setOnClickListener(v ->
                 startActivity(new Intent(UserActivity.this, AccountOverviewActivity.class)));
     }
 
-    // ── Fetch student profile from /authorized_uids by auth_uid ──
+    // ── Fetch profile by looping manually (no index needed) ───────
     private void fetchStudentProfile(String authUid) {
         mDatabase.child("authorized_uids")
-                .orderByChild("auth_uid")
-                .equalTo(authUid)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (snapshot.exists()) {
-                            // There should be exactly one match
-                            for (DataSnapshot entry : snapshot.getChildren()) {
-                                nfcUid = entry.getKey(); // the NFC card UID is the key
+                        boolean found = false;
+                        for (DataSnapshot entry : snapshot.getChildren()) {
+                            String storedAuthUid = entry.child("auth_uid").getValue(String.class);
+                            if (authUid.equals(storedAuthUid)) {
+                                found = true;
+                                nfcUid = entry.getKey();
 
                                 String name = entry.child("student_name").getValue(String.class);
                                 TextView tvUserName = findViewById(R.id.tvUserName);
-                                if (name != null && tvUserName != null) {
-                                    tvUserName.setText(name);
-                                }
+                                if (name != null && tvUserName != null) tvUserName.setText(name);
 
-                                // Now calculate stats using the NFC UID (logged in access_logs)
                                 calculateUserStats(nfcUid);
                                 break;
                             }
-                        } else {
-                            // auth_uid not linked yet — show fallback
+                        }
+                        if (!found) {
                             TextView tvUserName = findViewById(R.id.tvUserName);
                             if (tvUserName != null) tvUserName.setText("Student");
                             Toast.makeText(UserActivity.this,
@@ -130,17 +114,13 @@ public class UserActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == R.id.action_logout) {
-            logoutUser();
-            return true;
-        }
+        if (item.getItemId() == R.id.action_logout) { logoutUser(); return true; }
         return super.onOptionsItemSelected(item);
     }
 
     private void logoutUser() {
         mAuth.signOut();
-        SharedPreferences prefs = getSharedPreferences("session", MODE_PRIVATE);
-        prefs.edit().clear().apply();
+        getSharedPreferences("session", MODE_PRIVATE).edit().clear().apply();
         goToLogin();
     }
 
@@ -151,7 +131,7 @@ public class UserActivity extends AppCompatActivity {
         finish();
     }
 
-    // ── Calculate monthly visit stats using NFC UID ───────────────
+    // ── Calculate monthly stats ───────────────────────────────────
     private void calculateUserStats(String nfcUid) {
         mDatabase.child("access_logs")
                 .orderByChild("uid")
@@ -159,44 +139,36 @@ public class UserActivity extends AppCompatActivity {
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        int totalVisitsThisMonth = 0;
+                        int total = 0;
                         HashMap<String, Integer> roomCounts = new HashMap<>();
 
-                        Calendar currentCal = Calendar.getInstance();
-                        int currentMonth = currentCal.get(Calendar.MONTH);
-                        int currentYear  = currentCal.get(Calendar.YEAR);
-
+                        Calendar now = Calendar.getInstance();
+                        int currentMonth = now.get(Calendar.MONTH);
+                        int currentYear  = now.get(Calendar.YEAR);
                         SimpleDateFormat sdf = new SimpleDateFormat(
                                 "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
 
                         for (DataSnapshot log : snapshot.getChildren()) {
-                            String decision     = log.child("decision").getValue(String.class);
-                            String timestampStr = log.child("timestamp").getValue(String.class);
-
-                            if ("allow".equals(decision) && timestampStr != null) {
+                            String decision  = log.child("decision").getValue(String.class);
+                            String timestamp = log.child("timestamp").getValue(String.class);
+                            if ("allow".equals(decision) && timestamp != null) {
                                 try {
-                                    Date logDate = sdf.parse(timestampStr);
-                                    if (logDate != null) {
-                                        Calendar logCal = Calendar.getInstance();
-                                        logCal.setTime(logDate);
-
-                                        if (logCal.get(Calendar.MONTH) == currentMonth
-                                                && logCal.get(Calendar.YEAR) == currentYear) {
-                                            totalVisitsThisMonth++;
+                                    Date d = sdf.parse(timestamp);
+                                    if (d != null) {
+                                        Calendar c = Calendar.getInstance();
+                                        c.setTime(d);
+                                        if (c.get(Calendar.MONTH) == currentMonth
+                                                && c.get(Calendar.YEAR) == currentYear) {
+                                            total++;
                                             String room = log.child("lab_room").getValue(String.class);
-                                            if (room != null) {
-                                                roomCounts.put(room,
-                                                        roomCounts.getOrDefault(room, 0) + 1);
-                                            }
+                                            if (room != null)
+                                                roomCounts.put(room, roomCounts.getOrDefault(room, 0) + 1);
                                         }
                                     }
-                                } catch (ParseException e) {
-                                    e.printStackTrace();
-                                }
+                                } catch (ParseException e) { e.printStackTrace(); }
                             }
                         }
-
-                        updateStatsUI(totalVisitsThisMonth, roomCounts);
+                        updateStatsUI(total, roomCounts);
                     }
 
                     @Override
@@ -207,7 +179,7 @@ public class UserActivity extends AppCompatActivity {
                 });
     }
 
-    // ── Update stats UI ───────────────────────────────────────────
+    // ── Update UI ─────────────────────────────────────────────────
     private void updateStatsUI(int totalVisits, HashMap<String, Integer> roomCounts) {
         TextView tvTotalVisits = findViewById(R.id.tvTotalVisits);
         TextView tvMostVisited = findViewById(R.id.tvMostVisited);
@@ -219,42 +191,33 @@ public class UserActivity extends AppCompatActivity {
             return;
         }
 
-        String mostVisitedRoom = "";
-        int maxVisits = 0;
-        for (Map.Entry<String, Integer> entry : roomCounts.entrySet()) {
-            if (entry.getValue() > maxVisits) {
-                maxVisits = entry.getValue();
-                mostVisitedRoom = entry.getKey();
-            }
+        String best = ""; int max = 0;
+        for (Map.Entry<String, Integer> e : roomCounts.entrySet()) {
+            if (e.getValue() > max) { max = e.getValue(); best = e.getKey(); }
         }
-
-        if (tvMostVisited != null) tvMostVisited.setText(mostVisitedRoom);
+        if (tvMostVisited != null) tvMostVisited.setText(best);
     }
 
-    // ── Check room occupancy ──────────────────────────────────────
+    // ── Room occupancy ────────────────────────────────────────────
     private void checkRoomOccupancy(String roomId) {
         mDatabase.child("occupancy").child(roomId)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         if (snapshot.exists()) {
-                            Long currentCount = snapshot.child("current_count").getValue(Long.class);
-                            showRoomDialog(roomId, currentCount);
+                            Long count = snapshot.child("current_count").getValue(Long.class);
+                            showRoomDialog(roomId, count);
                         } else {
-                            Toast.makeText(UserActivity.this,
-                                    "Room data not found.", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(UserActivity.this, "Room data not found.", Toast.LENGTH_SHORT).show();
                         }
                     }
-
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-                        Toast.makeText(UserActivity.this,
-                                "Error fetching data.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(UserActivity.this, "Error fetching data.", Toast.LENGTH_SHORT).show();
                     }
                 });
     }
 
-    // ── Occupancy dialog ──────────────────────────────────────────
     private void showRoomDialog(String roomId, Long count) {
         new AlertDialog.Builder(this)
                 .setTitle("Lab Room: " + roomId)

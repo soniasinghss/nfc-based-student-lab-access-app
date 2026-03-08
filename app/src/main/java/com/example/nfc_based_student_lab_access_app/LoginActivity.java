@@ -12,7 +12,6 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -31,27 +30,25 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_login); // ALWAYS call this first
 
-        // Check if user is already logged in
-        mAuth = FirebaseAuth.getInstance();
+        mAuth     = FirebaseAuth.getInstance();
         mDatabase = FirebaseDatabase.getInstance().getReference();
 
+        etEmail        = findViewById(R.id.etEmail);
+        etPassword     = findViewById(R.id.etPassword);
+        btnLogin       = findViewById(R.id.btnLogin);
+        tvError        = findViewById(R.id.tvError);
+        cbKeepSignedIn = findViewById(R.id.cbKeepSignedIn);
+
+        // Check existing session AFTER views are bound
         SharedPreferences prefs = getSharedPreferences("session", MODE_PRIVATE);
         boolean keepSignedIn = prefs.getBoolean("keepSignedIn", false);
-
         if (mAuth.getCurrentUser() != null && keepSignedIn) {
-            // Already logged in — figure out where to send them
+            btnLogin.setEnabled(false);
             routeUser(mAuth.getCurrentUser().getUid());
             return;
         }
-
-        setContentView(R.layout.activity_login);
-
-        etEmail       = findViewById(R.id.etEmail);
-        etPassword    = findViewById(R.id.etPassword);
-        btnLogin      = findViewById(R.id.btnLogin);
-        tvError       = findViewById(R.id.tvError);
-        cbKeepSignedIn = findViewById(R.id.cbKeepSignedIn);
 
         btnLogin.setOnClickListener(v -> validateAndLogin());
     }
@@ -61,18 +58,11 @@ public class LoginActivity extends AppCompatActivity {
         String email    = etEmail.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
 
-        if (email.isEmpty()) {
-            showError("Email is required");
-            return;
-        }
+        if (email.isEmpty()) { showError("Email is required"); return; }
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            showError("Invalid email format");
-            return;
+            showError("Invalid email format"); return;
         }
-        if (password.isEmpty()) {
-            showError("Password is required");
-            return;
-        }
+        if (password.isEmpty()) { showError("Password is required"); return; }
 
         loginWithFirebase(email, password);
     }
@@ -83,14 +73,10 @@ public class LoginActivity extends AppCompatActivity {
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener(authResult -> {
                     String uid = authResult.getUser().getUid();
-
-                    // Save session preference
-                    SharedPreferences prefs = getSharedPreferences("session", MODE_PRIVATE);
-                    prefs.edit()
+                    getSharedPreferences("session", MODE_PRIVATE).edit()
                             .putString("uid", uid)
                             .putBoolean("keepSignedIn", cbKeepSignedIn.isChecked())
                             .apply();
-
                     routeUser(uid);
                 })
                 .addOnFailureListener(e -> {
@@ -101,20 +87,16 @@ public class LoginActivity extends AppCompatActivity {
 
     // ── Route: Admin or Student ───────────────────────────────────
     private void routeUser(String uid) {
-        // First check if UID is in /admins
         mDatabase.child("admins").child(uid)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot snapshot) {
                         if (snapshot.exists()) {
-                            // → Admin
                             goTo(AdminActivity.class);
                         } else {
-                            // Not admin — check if they're an authorized student
                             checkIfStudent(uid);
                         }
                     }
-
                     @Override
                     public void onCancelled(DatabaseError error) {
                         btnLogin.setEnabled(true);
@@ -123,25 +105,28 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
+    // ── Loop through all entries manually (avoids index requirement)
     private void checkIfStudent(String uid) {
-        // Search /authorized_uids for an entry where auth_uid == uid
         mDatabase.child("authorized_uids")
-                .orderByChild("auth_uid")
-                .equalTo(uid)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot snapshot) {
-                        if (snapshot.exists()) {
-                            // → Student
+                        boolean found = false;
+                        for (DataSnapshot entry : snapshot.getChildren()) {
+                            String storedAuthUid = entry.child("auth_uid").getValue(String.class);
+                            if (uid.equals(storedAuthUid)) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) {
                             goTo(UserActivity.class);
                         } else {
-                            // Neither admin nor authorized student
                             mAuth.signOut();
                             btnLogin.setEnabled(true);
                             showError("Access denied: your account is not authorized.");
                         }
                     }
-
                     @Override
                     public void onCancelled(DatabaseError error) {
                         btnLogin.setEnabled(true);
