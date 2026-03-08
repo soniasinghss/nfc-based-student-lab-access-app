@@ -31,7 +31,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Lab Access Portal"
+                android:text="Create Account"
                 android:textColor="#FFFFFF"
                 android:textSize="24sp"
                 android:textStyle="bold"/>
@@ -39,7 +39,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Concordia University"
+                android:text="Concordia Lab Access"
                 android:textColor="#FFCCCC"
                 android:textSize="13sp"
                 android:layout_marginTop="4dp"/>
@@ -69,8 +69,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:inputType="textEmailAddress"
-                android:hint="admin@concordia.ca"
-
+                android:hint="student@concordia.ca"
                 android:textColor="#1A1A1A"
                 android:textSize="14sp"
                 android:paddingStart="16dp"
@@ -96,25 +95,37 @@
                 android:layout_height="52dp"
                 android:inputType="textPassword"
                 android:hint="••••••••"
+                android:textColor="#1A1A1A"
+                android:textSize="14sp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:background="@drawable/rounded_input"
+                android:layout_marginBottom="18dp"/>
 
+            <!-- CONFIRM PASSWORD LABEL -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CONFIRM PASSWORD"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#666666"
+                android:letterSpacing="0.08"
+                android:layout_marginBottom="6dp"/>
+
+            <!-- CONFIRM PASSWORD INPUT -->
+            <EditText
+                android:id="@+id/etConfirmPassword"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:inputType="textPassword"
+                android:hint="••••••••"
                 android:textColor="#1A1A1A"
                 android:textSize="14sp"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:background="@drawable/rounded_input"
                 android:layout_marginBottom="16dp"/>
-
-            <!-- KEEP SIGNED IN -->
-            <CheckBox
-                android:id="@+id/cbKeepSignedIn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Keep me signed in"
-                android:textSize="13sp"
-                android:textColor="#444444"
-                android:buttonTint="#932339"
-                android:checked="true"
-                android:layout_marginBottom="24dp"/>
 
             <!-- ERROR TEXT -->
             <TextView
@@ -129,37 +140,26 @@
                 android:visibility="gone"
                 android:layout_marginBottom="16dp"/>
 
-            <!-- LOGIN BUTTON -->
+            <!-- REGISTER BUTTON -->
             <Button
-                android:id="@+id/btnLogin"
+                android:id="@+id/btnRegister"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:text="Sign In"
+                android:text="Create Account"
                 android:textColor="#FFFFFF"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:backgroundTint="#932339"
                 android:layout_marginBottom="20dp"/>
 
-            <!-- Register link -->
+            <!-- SIGN IN LINK -->
             <TextView
-                android:id="@+id/tvRegister"
+                android:id="@+id/tvBackToLogin"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Register for the first time"
+                android:text="Already have an account? Sign In"
                 android:textColor="#932339"
                 android:textSize="13sp"
-                android:textStyle="bold"
-                android:gravity="center"
-                android:layout_marginBottom="16dp"/>
-
-            <!-- FOOTER NOTE -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Forgot your password? Contact IT Services"
-                android:textColor="#888888"
-                android:textSize="12sp"
                 android:gravity="center"/>
 
         </LinearLayout>
