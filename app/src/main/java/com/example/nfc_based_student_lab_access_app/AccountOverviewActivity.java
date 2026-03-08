@@ -88,7 +88,8 @@ public class AccountOverviewActivity extends AppCompatActivity {
                             for (DataSnapshot entry : snapshot.getChildren()) {
                                 String nfcUid = entry.getKey();
                                 String name   = entry.child("student_name").getValue(String.class);
-                                String sid    = entry.child("student_id").getValue(String.class);
+                                Object sidRaw = entry.child("student_id").getValue();
+                                String sid = sidRaw != null ? String.valueOf(sidRaw) : null;
                                 String addedAt = entry.child("added_at").getValue(String.class);
 
                                 // Avatar initial
