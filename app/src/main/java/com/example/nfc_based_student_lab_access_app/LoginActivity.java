@@ -8,6 +8,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -26,6 +27,7 @@ public class LoginActivity extends AppCompatActivity {
     CheckBox cbKeepSignedIn;
     private FirebaseAuth mAuth;
     private DatabaseReference mDatabase;
+    TextView tvRegister;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,7 +42,7 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin       = findViewById(R.id.btnLogin);
         tvError        = findViewById(R.id.tvError);
         cbKeepSignedIn = findViewById(R.id.cbKeepSignedIn);
-
+        tvRegister     = findViewById(R.id.tvRegister);
         // Check existing session AFTER views are bound
         SharedPreferences prefs = getSharedPreferences("session", MODE_PRIVATE);
         boolean keepSignedIn = prefs.getBoolean("keepSignedIn", false);
@@ -51,6 +53,10 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         btnLogin.setOnClickListener(v -> validateAndLogin());
+
+        tvRegister.setOnClickListener(v -> {
+            startActivity(new Intent(this, RegisterActivity.class));
+        });
     }
 
     // ── Validation ────────────────────────────────────────────────
@@ -70,14 +76,38 @@ public class LoginActivity extends AppCompatActivity {
     // ── Firebase Auth ─────────────────────────────────────────────
     private void loginWithFirebase(String email, String password) {
         btnLogin.setEnabled(false);
+
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener(authResult -> {
+                    if(authResult.getUser() == null) {
+                        btnLogin.setEnabled(true);
+                        showError("Login failed: user not found.");
+                        return;
+                    }
+
                     String uid = authResult.getUser().getUid();
-                    getSharedPreferences("session", MODE_PRIVATE).edit()
-                            .putString("uid", uid)
-                            .putBoolean("keepSignedIn", cbKeepSignedIn.isChecked())
-                            .apply();
-                    routeUser(uid);
+                    authResult.getUser().getIdToken(true)
+                            .addOnSuccessListener(getTokenResult -> {
+                                    String jwtToken = getTokenResult.getToken();
+
+                                    if (jwtToken == null) {
+                                        btnLogin.setEnabled(true);
+                                        showError("Failed to get JWT token.");
+                                        return;
+                                    }
+
+                                    Log.d("JWT_TOKEN", jwtToken);
+
+                                    getSharedPreferences("session", MODE_PRIVATE).edit()
+                                                .putString("uid", uid)
+                                                .putBoolean("keepSignedIn", cbKeepSignedIn.isChecked())
+                                                .apply();
+                                    routeUser(uid);
+                            })
+                            .addOnFailureListener(e -> {
+                                btnLogin.setEnabled(true);
+                                showError("Failed to get JWT token: " + e.getMessage());
+                            });
                 })
                 .addOnFailureListener(e -> {
                     btnLogin.setEnabled(true);
