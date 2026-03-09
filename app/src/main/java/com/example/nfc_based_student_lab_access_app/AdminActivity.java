@@ -28,7 +28,7 @@ public class AdminActivity extends AppCompatActivity {
 
     EditText etUID, etStudentName, etStudentId;
     Button btnAddUID, btnRemoveUID, btnLogout;
-    TextView tvStatus;
+    TextView tvStatus, tvOccupancy;
     DatabaseReference db;
     FirebaseAuth mAuth;
 
@@ -40,14 +40,12 @@ public class AdminActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         db    = FirebaseDatabase.getInstance().getReference();
 
-        // Null-check current user
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) {
             goToLogin();
             return;
         }
 
-        // Bind views
         etUID         = findViewById(R.id.etUID);
         etStudentName = findViewById(R.id.etStudentName);
         etStudentId   = findViewById(R.id.etStudentId);
@@ -55,6 +53,7 @@ public class AdminActivity extends AppCompatActivity {
         btnRemoveUID  = findViewById(R.id.btnRemoveUID);
         btnLogout     = findViewById(R.id.btnLogout);
         tvStatus      = findViewById(R.id.tvStatus);
+        tvOccupancy   = findViewById(R.id.tvOccupancy);
 
         // ADMIN-1.1.3 — Restrict to admins only
         String currentUID = user.getUid();
@@ -72,12 +71,27 @@ public class AdminActivity extends AppCompatActivity {
                     public void onCancelled(@NonNull DatabaseError error) {}
                 });
 
+        // Occupancy listener
+        db.child("occupancy").child("lab-101").addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                Long count = snapshot.child("current_count").getValue(Long.class);
+                Long max   = snapshot.child("max_capacity").getValue(Long.class);
+                if (count != null && max != null) {
+                    tvOccupancy.setText(count + " / " + max);
+                } else {
+                    tvOccupancy.setText("-- / --");
+                }
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
+
         btnAddUID.setOnClickListener(v -> addUID());
         btnRemoveUID.setOnClickListener(v -> removeUID());
         btnLogout.setOnClickListener(v -> logoutUser());
     }
 
-    // ── Add UID with full student object ─────────────────────────
     private void addUID() {
         String uid  = etUID.getText().toString().trim();
         String name = etStudentName.getText().toString().trim();
@@ -95,8 +109,6 @@ public class AdminActivity extends AppCompatActivity {
         student.put("student_name", name);
         student.put("student_id",   sid);
         student.put("added_at",     timestamp);
-        // auth_uid is empty until the student creates a Firebase Auth account
-        // Admin can update this later or it gets linked on first login
         student.put("auth_uid", "");
 
         db.child("authorized_uids").child(uid).setValue(student)
@@ -109,15 +121,12 @@ public class AdminActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> tvStatus.setText("Error: " + e.getMessage()));
     }
 
-    // ── Remove UID ────────────────────────────────────────────────
     private void removeUID() {
         String uid = etUID.getText().toString().trim();
-
         if (uid.isEmpty()) {
             tvStatus.setText("Please enter a UID");
             return;
         }
-
         db.child("authorized_uids").child(uid).removeValue()
                 .addOnSuccessListener(a -> {
                     tvStatus.setText("✅ Student removed successfully");
@@ -126,7 +135,6 @@ public class AdminActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> tvStatus.setText("Error: " + e.getMessage()));
     }
 
-    // ── Logout ────────────────────────────────────────────────────
     private void logoutUser() {
         mAuth.signOut();
         SharedPreferences prefs = getSharedPreferences("session", MODE_PRIVATE);
