@@ -30,7 +30,7 @@ This web application uses these technologies
 
 **Mobile App**
 * Java
-* Android SDK (Min SDK: 24)
+* Android SDK
 * Gradle (Kotlin DSL)
 
 **Hardware**
