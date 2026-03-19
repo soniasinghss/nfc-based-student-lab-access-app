@@ -11,6 +11,11 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class RegisterActivity extends AppCompatActivity {
 
@@ -19,6 +24,7 @@ public class RegisterActivity extends AppCompatActivity {
     private TextView tvError, tvBackToLogin;
 
     private FirebaseAuth mAuth;
+    private DatabaseReference mDatabase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,6 +32,7 @@ public class RegisterActivity extends AppCompatActivity {
         setContentView(R.layout.activity_register);
 
         mAuth = FirebaseAuth.getInstance();
+        mDatabase = FirebaseDatabase.getInstance().getReference();
 
         etEmail = findViewById(R.id.etEmail);
         etPassword = findViewById(R.id.etPassword);
@@ -79,15 +86,41 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void registerWithFirebase(String email, String password) {
+        btnRegister.setEnabled(false);
+
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener(authResult -> {
-                    Toast.makeText(this, "Account created!", Toast.LENGTH_SHORT).show();
+                    if (authResult.getUser() == null) {
+                        btnRegister.setEnabled(true);
+                        tvError.setVisibility(View.VISIBLE);
+                        tvError.setText("Registration failed: user not created.");
+                        return;
+                    }
 
-                    Intent intent = new Intent(this, MainActivity.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(intent);
+                    String uid = authResult.getUser().getUid();
+
+                    Map<String, Object> studentData = new HashMap<>();
+                    studentData.put("auth_uid", uid);
+                    studentData.put("email", email);
+                    studentData.put("role", "student");
+
+                    mDatabase.child("authorized_uids").push()
+                            .setValue(studentData)
+                            .addOnSuccessListener(unused -> {
+                                Toast.makeText(this, "Account created!", Toast.LENGTH_SHORT).show();
+
+                                Intent intent = new Intent(this, LoginActivity.class);
+                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                startActivity(intent);
+                            })
+                            .addOnFailureListener(e -> {
+                                btnRegister.setEnabled(true);
+                                tvError.setVisibility(View.VISIBLE);
+                                tvError.setText("Failed to save user data: " + e.getMessage());
+                            });
                 })
                 .addOnFailureListener(e -> {
+                    btnRegister.setEnabled(true);
                     tvError.setVisibility(View.VISIBLE);
                     tvError.setText("Registration failed: " + e.getMessage());
                 });
