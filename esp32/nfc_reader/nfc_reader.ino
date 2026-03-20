@@ -20,8 +20,7 @@ const char* firebaseURL = "https://nfc-lab-access-app-default-rtdb.firebaseio.co
 // -------- RFID --------
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 
-// -------- Allowed UID (white card) --------
-byte allowedUID[4] = {0x90, 0x54, 0x14, 0x37};
+// Access is now controlled by Firebase
 
 void setup() {
   Serial.begin(115200);
@@ -87,25 +86,14 @@ void loop() {
   // Send scanned UID to Firebase
   sendUIDToFirebase(uidString);
 
-  // Local allow/deny check
-  bool match = true;
+  // check if uid is allowed from firebase
+  bool allowed = checkUIDInFirebase(uidString);
 
-  if (mfrc522.uid.size != 4) {
-    match = false;
-  } else {
-    for (byte i = 0; i < 4; i++) {
-      if (mfrc522.uid.uidByte[i] != allowedUID[i]) {
-        match = false;
-        break;
-      }
-    }
-  }
-
-  if (match) {
-    accessGranted();
-  } else {
-    accessDenied();
-  }
+if (allowed) {
+  accessGranted();
+} else {
+  accessDenied();
+}
 
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
@@ -160,3 +148,36 @@ void sendUIDToFirebase(String uid) {
 
   http.end();
 }
+bool checkUIDInFirebase(String uid) {
+
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+
+  // remove spaces (Firebase keys don't have spaces)
+  uid.replace(" ", "");
+
+  String url = String(firebaseURL) + "authorized_uids/" + uid + ".json";
+
+  http.begin(client, url);
+
+  int httpCode = http.GET();
+
+  if (httpCode > 0) {
+    String payload = http.getString();
+
+    Serial.print("Firebase response: ");
+    Serial.println(payload);
+
+    http.end();
+
+    if (payload == "true") {
+      return true;
+    }
+  }
+
+  http.end();
+  return false;
+}
+
