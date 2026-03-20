@@ -26,6 +26,8 @@
         <activity android:name=".AdminActivity"/>
         <activity android:name=".UserActivity"/>
         <activity android:name=".AccountOverviewActivity"/>
+        <activity android:name=".NfcCardActivity"
+            android:parentActivityName=".UserActivity"/>
     </application>
 
 </manifest>
