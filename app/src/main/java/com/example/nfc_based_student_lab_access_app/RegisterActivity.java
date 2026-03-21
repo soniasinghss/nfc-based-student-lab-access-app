@@ -73,6 +73,10 @@ public class RegisterActivity extends AppCompatActivity {
             showError("Invalid email format");
             return;
         }
+        if (!email.endsWith("@concordia.ca") && !email.endsWith("@live.concordia.ca")) {
+            showError("Please use your Concordia email address");
+            return;
+        }
         if (studentId.isEmpty()) {
             showError("Student ID is required");
             return;
