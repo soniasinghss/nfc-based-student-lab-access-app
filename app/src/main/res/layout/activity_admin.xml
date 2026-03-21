@@ -9,7 +9,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -48,7 +47,6 @@
 
             </LinearLayout>
 
-            <!-- Stats Row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -89,7 +87,7 @@
                     android:padding="12dp"
                     android:layout_marginEnd="4dp">
                     <TextView
-                        android:text="1"
+                        android:text="—"
                         android:textColor="#FFFFFF"
                         android:textSize="20sp"
                         android:textStyle="bold"
@@ -129,7 +127,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Add/Remove Student Card -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -159,8 +156,8 @@
             <EditText
                 android:id="@+id/etUID"
                 android:hint="e.g. 90541437"
-                android:background="@drawable/rounded_input"
                 android:padding="12dp"
+                android:background="#F5F5F5"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"/>
@@ -176,8 +173,8 @@
             <EditText
                 android:id="@+id/etStudentName"
                 android:hint="e.g. John Doe"
-                android:background="@drawable/rounded_input"
                 android:padding="12dp"
+                android:background="#F5F5F5"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"/>
@@ -194,8 +191,8 @@
                 android:id="@+id/etStudentId"
                 android:hint="e.g. 40012345"
                 android:inputType="number"
-                android:background="@drawable/rounded_input"
                 android:padding="12dp"
+                android:background="#F5F5F5"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"/>
@@ -230,13 +227,13 @@
                 android:id="@+id/tvStatus"
                 android:text=""
                 android:textSize="13sp"
+                android:textColor="#7B1A2E"
                 android:layout_marginTop="8dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
         </LinearLayout>
 
-        <!-- Lab Occupancy Card -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -258,36 +255,39 @@
                 android:layout_height="wrap_content"/>
 
             <LinearLayout
+                android:id="@+id/llOccupancyContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="vertical">
+            </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
+        </LinearLayout>
 
-                    <TextView
-                        android:text="Lab 101"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="#000000"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#FFFFFF"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="24dp"
+            android:elevation="2dp">
 
-                </LinearLayout>
+            <TextView
+                android:text="Recent Access Logs"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#000000"
+                android:layout_marginBottom="12dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
 
-                <TextView
-                    android:id="@+id/tvOccupancy"
-                    android:text="-- / --"
-                    android:textSize="14sp"
-                    android:textColor="#7B1A2E"
-                    android:background="#FFE0E0"
-                    android:padding="8dp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
-
+            <LinearLayout
+                android:id="@+id/llLogsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
             </LinearLayout>
 
         </LinearLayout>
