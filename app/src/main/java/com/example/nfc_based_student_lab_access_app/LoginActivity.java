@@ -50,6 +50,12 @@ public class LoginActivity extends AppCompatActivity {
 
         tvRegister.setOnClickListener(v ->
                 startActivity(new Intent(LoginActivity.this, RegisterActivity.class)));
+        TextView tvContactIt = findViewById(R.id.tvContactIt);
+        tvContactIt.setOnClickListener(v -> {
+            android.net.Uri uri = android.net.Uri.parse("https://fcms.concordia.ca/idss/pages/account/passwordreset.aspx");
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            startActivity(intent);
+        });
     }
 
     private void validateAndLogin() {
