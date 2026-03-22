@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
+#include <time.h>
 
 // -------- WiFi / Firebase --------
 const char* ssid = "samin";
@@ -44,6 +45,23 @@ void setup() {
   Serial.println();
   Serial.println("WiFi connected!");
 
+  // -------- TIME (AUTO DST FIX) --------
+  configTime(0, 0, "pool.ntp.org");
+  setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0/2", 1);
+  tzset();
+
+  Serial.println("Time syncing...");
+
+  time_t now = time(nullptr);
+  while (now < 100000) {
+    delay(500);
+    Serial.print(".");
+    now = time(nullptr);
+  }
+
+  Serial.println();
+  Serial.println("Time synced!");
+
   // Start SPI + RFID
   SPI.begin(18, 19, 23, 5);
   mfrc522.PCD_Init();
@@ -55,7 +73,7 @@ void setup() {
 }
 
 void loop() {
-  // Wait for new card
+
   if (!mfrc522.PICC_IsNewCardPresent()) return;
   if (!mfrc522.PICC_ReadCardSerial()) return;
 
@@ -83,17 +101,19 @@ void loop() {
   Serial.print("UID String: ");
   Serial.println(uidString);
 
-  // Send scanned UID to Firebase
+  // Send UID to Firebase
   sendUIDToFirebase(uidString);
 
-  // check if uid is allowed from firebase
+  // Check access from Firebase
   bool allowed = checkUIDInFirebase(uidString);
 
-if (allowed) {
-  accessGranted();
-} else {
-  accessDenied();
-}
+  if (allowed) {
+    accessGranted();
+    logAccessToFirebase(uidString, "allow");
+  } else {
+    accessDenied();
+    logAccessToFirebase(uidString, "deny");
+  }
 
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
@@ -148,6 +168,7 @@ void sendUIDToFirebase(String uid) {
 
   http.end();
 }
+
 bool checkUIDInFirebase(String uid) {
 
   WiFiClientSecure client;
@@ -155,10 +176,9 @@ bool checkUIDInFirebase(String uid) {
 
   HTTPClient http;
 
-  // remove spaces (Firebase keys don't have spaces)
   uid.replace(" ", "");
 
-  String url = String(firebaseURL) + "authorized_uids/" + uid + ".json";
+  String url = String(firebaseURL) + "authorized_uids/" + uid + "/Access.json";
 
   http.begin(client, url);
 
@@ -181,3 +201,38 @@ bool checkUIDInFirebase(String uid) {
   return false;
 }
 
+void logAccessToFirebase(String uid, String decision) {
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+
+  uid.replace(" ", "");
+
+  time_t now = time(nullptr);
+  struct tm *timeinfo = localtime(&now);
+
+  char buffer[30];
+  strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", timeinfo);
+
+  String timestamp = String(buffer);
+
+  String url = String(firebaseURL) + "access_logs.json";
+
+  String jsonData = "{";
+  jsonData += "\"uid\":\"" + uid + "\",";
+  jsonData += "\"decision\":\"" + decision + "\",";
+  jsonData += "\"lab_room\":\"lab-101\",";
+  jsonData += "\"timestamp\":\"" + timestamp + "\"";
+  jsonData += "}";
+
+  http.begin(client, url);
+  http.addHeader("Content-Type", "application/json");
+
+  int httpCode = http.POST(jsonData);
+
+  Serial.print("Log code: ");
+  Serial.println(httpCode);
+
+  http.end();
+}
