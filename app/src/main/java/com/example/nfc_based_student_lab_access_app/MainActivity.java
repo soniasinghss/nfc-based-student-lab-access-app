@@ -18,6 +18,9 @@ import com.example.nfc_based_student_lab_access_app.databinding.ActivityMainBind
 import android.view.Menu;
 import android.view.MenuItem;
 
+import android.content.Intent;
+import android.view.View;
+
 public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration appBarConfiguration;
