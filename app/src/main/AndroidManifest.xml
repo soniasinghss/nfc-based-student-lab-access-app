@@ -28,6 +28,7 @@
         <activity android:name=".AccountOverviewActivity"/>
         <activity android:name=".NfcCardActivity"
             android:parentActivityName=".UserActivity"/>
+        <activity android:name=".MapActivity" />
     </application>
 
 </manifest>
