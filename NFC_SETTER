@@ -1,0 +1,223 @@
+#include <SPI.h>
+#include <MFRC522.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+//#include <ESP32Servo.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+
+// -------- Configuration --------
+const char* ssid = "samin";
+const char* password = "password123";
+const char* firebaseURL = "https://nfc-lab-access-app-default-rtdb.firebaseio.com/";
+
+//static const int servoPin = 13;
+//Servo servo1;
+
+#define LED_GREEN  26
+#define LED_RED    14
+#define BUZZER_PIN 16
+#define SS_PIN 5
+#define RST_PIN 4   
+
+MFRC522 mfrc522(SS_PIN, RST_PIN);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+bool message=false;
+
+void setup() {
+  Serial.begin(115200);
+  
+  //servo1.attach(servoPin);
+  //servo1.write(0); // Start closed
+
+  pinMode(LED_GREEN, OUTPUT);
+  pinMode(LED_RED, OUTPUT);
+
+  Wire.begin(21, 22);
+  lcd.init();
+  lcd.backlight();
+  WiFi.setSleep(false);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi connected!");
+
+  SPI.begin(18, 19, 23);
+  mfrc522.PCD_Init();
+  
+
+  ledcAttach(BUZZER_PIN, 2000, 8);
+  
+}
+
+void loop() {
+  if(!message){
+  lcd.setCursor(0, 0);
+  lcd.print("Scan card to    "); // Spaces clear old text
+  lcd.setCursor(0, 1);
+  lcd.print("check access    ");
+  message=true;
+  }
+
+  if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) {
+    delay(50);
+    return;
+  }
+
+  // Build UID without spaces for better URL compatibility
+  String uidString = "";
+  for (byte i = 0; i < mfrc522.uid.size; i++) {
+    if (mfrc522.uid.uidByte[i] < 0x10) uidString += "0";
+    uidString += String(mfrc522.uid.uidByte[i], HEX);
+  }
+  uidString.toUpperCase();
+
+  Serial.println("Scanned UID: " + uidString);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Checking...");
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(uidString);
+
+  // Firebase logic
+  sendUIDToFirebase(uidString);
+  if (checkUIDInFirebase(uidString)) {
+    accessGranted();
+    message=false;
+
+  } else {
+    accessDenied();
+    
+    message=false;
+  }
+  delay(500);
+
+  mfrc522.PICC_HaltA();
+  mfrc522.PCD_StopCrypto1();
+  delay(1000);
+}
+
+void open(){
+  // 1. Open the servo first
+  //servo1.write(115);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Gate Open");
+  lcd.setCursor(0, 1);
+  lcd.print("Scan to Close...");
+
+  // 2. WAIT here until a card is detected
+  // This while loop runs forever until a card is present
+  while (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) {
+    delay(50); // Small delay so the ESP32 doesn't crash from a tight loop
+  }
+
+  // 3. Once a card is detected, the code continues here
+  String uid = "";
+  for (byte i = 0; i < mfrc522.uid.size; i++) {
+    if (mfrc522.uid.uidByte[i] < 0x10) uid += "0";
+    uid += String(mfrc522.uid.uidByte[i], HEX);
+  }
+  uid.toUpperCase();
+
+  // 4. Display the UID
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Card Read:");
+  lcd.setCursor(0, 1);
+  lcd.print(uid);
+  Serial.println("Card Scanned: " + uid);
+
+  // 5. Brief pause so you can actually read the screen
+  delay(2000); 
+
+  // 6. Close the servo
+ // servo1.write(0);
+  lcd.clear();
+  lcd.print("Gate Closed");
+  
+  // 7. Stop RFID communication for this card
+  mfrc522.PICC_HaltA();
+  mfrc522.PCD_StopCrypto1();
+}
+
+//access granted 
+void accessGranted() {
+  Serial.println("Access granted");
+  lcd.setCursor(0, 1);
+  lcd.print("Access granted");
+
+  digitalWrite(LED_GREEN, HIGH);
+  digitalWrite(LED_RED, LOW);
+
+  ledcWriteTone(BUZZER_PIN, 2000);
+  delay(120);
+  ledcWriteTone(BUZZER_PIN, 2500);
+  delay(120);
+  ledcWriteTone(BUZZER_PIN, 0);
+
+  delay(500);
+  digitalWrite(LED_GREEN, LOW);
+}
+//access denied
+void accessDenied() {
+  Serial.println("Access denied");
+  lcd.setCursor(0, 1);
+  lcd.print("Access denied");
+
+  digitalWrite(LED_RED, HIGH);
+  digitalWrite(LED_GREEN, LOW);
+
+  ledcWriteTone(BUZZER_PIN, 400);
+  delay(600);
+  ledcWriteTone(BUZZER_PIN, 0);
+
+  delay(500);
+  digitalWrite(LED_RED, LOW);
+}
+
+
+//send uid to database
+void sendUIDToFirebase(String uid) {
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+
+  String url = String(firebaseURL) + "test_uid.json";
+  http.begin(client, url);
+
+  int httpCode = http.PUT("\"" + uid + "\"");
+
+  Serial.print("Firebase code: ");
+  Serial.println(httpCode);
+  Serial.println("UID sent to Firebase");
+
+  http.end();
+}
+
+
+//check the database for the id
+bool checkUIDInFirebase(String uid) {
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+
+  String url = String(firebaseURL) + "authorized_uids/" + uid + "/Access.json";
+
+  http.begin(client, url);
+  int code = http.GET();
+
+  if (code > 0) {
+    String payload = http.getString();
+    http.end();
+    return (payload == "true");
+  }
+
+  http.end();
+  return false;
+}
