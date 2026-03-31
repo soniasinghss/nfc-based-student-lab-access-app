@@ -8,8 +8,8 @@
 #include <WiFiClientSecure.h>
 
 // -------- Configuration --------
-const char* ssid = "samin";
-const char* password = "password123";
+const char* ssid = "iPhone (22)";
+const char* password = "12345678";
 const char* firebaseURL = "https://nfc-lab-access-app-default-rtdb.firebaseio.com/";
 
 //static const int servoPin = 13;
@@ -17,14 +17,18 @@ const char* firebaseURL = "https://nfc-lab-access-app-default-rtdb.firebaseio.co
 
 #define LED_GREEN  26
 #define LED_RED    14
+#define LED_BLUE 15
 #define BUZZER_PIN 16
 #define SS_PIN 5
 #define RST_PIN 4   
+#define Button 32
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 bool message=false;
 
+bool lastState=HIGH;
+bool currentState;
 void setup() {
   Serial.begin(115200);
   
@@ -33,6 +37,9 @@ void setup() {
 
   pinMode(LED_GREEN, OUTPUT);
   pinMode(LED_RED, OUTPUT);
+  pinMode(LED_BLUE, OUTPUT);
+
+  pinMode(Button,INPUT_PULLUP);
 
   Wire.begin(21, 22);
   lcd.init();
@@ -54,6 +61,13 @@ void setup() {
 }
 
 void loop() {
+
+    currentState=digitalRead(Button);
+  if(lastState==HIGH && currentState==LOW){
+    open();
+  }
+  lastState = currentState;
+
   if(!message){
   lcd.setCursor(0, 0);
   lcd.print("Scan card to    "); // Spaces clear old text
@@ -98,10 +112,12 @@ void loop() {
 
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
-  delay(1000);
+  
+  delay(500);
 }
 
 void open(){
+  digitalWrite(LED_BLUE,HIGH);
   // 1. Open the servo first
   //servo1.write(115);
   lcd.clear();
@@ -132,8 +148,9 @@ void open(){
   lcd.print(uid);
   Serial.println("Card Scanned: " + uid);
 
-  // 5. Brief pause so you can actually read the screen
-  delay(2000); 
+  // 5.send UID to firebase
+  sendUIDToSetter(uid);
+  delay(1000); 
 
   // 6. Close the servo
  // servo1.write(0);
@@ -143,6 +160,7 @@ void open(){
   // 7. Stop RFID communication for this card
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
+    digitalWrite(LED_BLUE,LOW);
 }
 
 //access granted 
@@ -199,7 +217,23 @@ void sendUIDToFirebase(String uid) {
 
   http.end();
 }
+void sendUIDToSetter(String uid){
+  WiFiClientSecure client;
+  client.setInsecure();
 
+  HTTPClient http;
+
+  String url = String(firebaseURL) + "NFC_setter.json";
+  http.begin(client, url);
+
+  int httpCode = http.PUT("\"" + uid + "\"");
+
+  Serial.print("Firebase code: ");
+  Serial.println(httpCode);
+  Serial.println("UID sent to Setter");
+
+  http.end();
+}
 
 //check the database for the id
 bool checkUIDInFirebase(String uid) {
@@ -221,3 +255,5 @@ bool checkUIDInFirebase(String uid) {
   http.end();
   return false;
 }
+
+
