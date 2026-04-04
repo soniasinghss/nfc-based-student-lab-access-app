@@ -11,7 +11,18 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Nfcbasedstudentlabaccessapp">
-
+        <activity
+            android:name=".AdminSetupActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AccessLogsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ManageOccupancyActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ManageStudentsActivity"
+            android:exported="false" />
         <activity
             android:name=".LoginActivity"
             android:exported="true"
@@ -22,13 +33,23 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".RegisterActivity"/>
-        <activity android:name=".AdminActivity"/>
-        <activity android:name=".UserActivity"/>
-        <activity android:name=".AccountOverviewActivity"/>
-        <activity android:name=".NfcCardActivity"
-            android:parentActivityName=".UserActivity"/>
+        <activity android:name=".RegisterActivity" />
+        <activity android:name=".AdminActivity" />
+        <activity android:name=".UserActivity" />
+        <activity android:name=".AccountOverviewActivity" />
+        <activity
+            android:name=".NfcCardActivity"
+            android:parentActivityName=".UserActivity" />
         <activity android:name=".MapActivity" />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

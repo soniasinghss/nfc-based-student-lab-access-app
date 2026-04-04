@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F5F5"
+    android:orientation="vertical">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#7B1A2E"
+        app:navigationIcon="?attr/homeAsUpIndicator"
+        app:navigationIconTint="#FFFFFF"
+        app:title="Manage Students"
+        app:titleTextColor="#FFFFFF" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Enrollment Mode"
+                    android:textColor="#888888"
+                    android:textSize="11sp"
+                    android:layout_marginBottom="8dp"/>
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/toggleGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    app:singleSelection="true"
+                    app:checkedButton="@+id/btnManual">
+
+                    <Button
+                        android:id="@+id/btnManual"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Manual"
+                        android:textColor="#333333"
+                        app:backgroundTint="@color/toggle_button_background" />
+
+                    <Button
+                        android:id="@+id/btnAuto"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Automatic"
+                        android:textColor="#333333"
+                        app:backgroundTint="@color/toggle_button_background" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <TextView
+                    android:id="@+id/tvNfcReaderLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="NFC READER STATUS (AUTOMATIC)"
+                    android:textColor="#7B1A2E"
+                    android:textStyle="bold"
+                    android:textSize="11sp"
+                    android:visibility="gone"/>
+
+                <TextView
+                    android:id="@+id/tvLastScanned"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Waiting for scan..."
+                    android:padding="12dp"
+                    android:background="#E8F5E9"
+                    android:textColor="#2E7D32"
+                    android:layout_marginBottom="12dp"
+                    android:visibility="gone"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:text="NFC CARD UID"
+                    android:textColor="#888888"
+                    android:textSize="11sp" />
+
+                <EditText
+                    android:id="@+id/etUID"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:background="#F5F5F5"
+                    android:hint="e.g. 90541437"
+                    android:padding="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:text="STUDENT NAME"
+                    android:textColor="#888888"
+                    android:textSize="11sp" />
+
+                <EditText
+                    android:id="@+id/etStudentName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:background="#F5F5F5"
+                    android:hint="e.g. John Doe"
+                    android:padding="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:text="STUDENT ID"
+                    android:textColor="#888888"
+                    android:textSize="11sp" />
+
+                <EditText
+                    android:id="@+id/etStudentId"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:background="#F5F5F5"
+                    android:hint="e.g. 40012345"
+                    android:inputType="number"
+                    android:padding="12dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnAddUID"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="#7B1A2E"
+                        android:text="+ Add"
+                        android:textColor="#FFFFFF" />
+
+                    <Button
+                        android:id="@+id/btnRemoveUID"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="#FFE0E0"
+                        android:text="- Remove"
+                        android:textColor="#7B1A2E" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:textColor="#7B1A2E"
+                    android:textSize="14sp"
+                    android:textStyle="italic" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+    </ScrollView>
+</LinearLayout>
