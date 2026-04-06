@@ -51,7 +51,6 @@ public class AdminActivity extends AppCompatActivity {
         // Disable cards initially until admin status is confirmed
         setCardsEnabled(false);
 
-        // Admin Auth Check
         String currentUID = user.getUid();
         db.child("admins").child(currentUID)
                 .addListenerForSingleValueEvent(new ValueEventListener() {

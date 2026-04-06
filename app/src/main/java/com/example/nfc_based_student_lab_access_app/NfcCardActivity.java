@@ -33,7 +33,6 @@ public class NfcCardActivity extends AppCompatActivity {
         mAuth     = FirebaseAuth.getInstance();
         mDatabase = FirebaseDatabase.getInstance().getReference();
 
-        // Toolbar with back button
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -79,6 +78,7 @@ public class NfcCardActivity extends AppCompatActivity {
                                 Object sidRaw = entry.child("student_id").getValue();
                                 String sid    = sidRaw != null ? String.valueOf(sidRaw) : "—";
                                 String added  = entry.child("added_at").getValue(String.class);
+                                Boolean access = entry.child("Access").getValue(Boolean.class);
 
                                 tvCardUID.setText(nfcUid != null ? nfcUid : "—");
                                 tvCardStatus.setText("✅ Active");
@@ -87,9 +87,18 @@ public class NfcCardActivity extends AppCompatActivity {
                                 tvStudentName.setText(name != null ? name : "—");
                                 tvStudentId.setText(sid);
                                 tvAddedAt.setText(added != null ? added : "—");
-                                tvLab101Access.setText("✅ Allowed");
-                                tvLab101Access.setTextColor(
-                                        getResources().getColor(android.R.color.holo_green_dark));
+
+                                // Dynamic access check
+                                if (access != null && access) {
+                                    tvLab101Access.setText("✅ Allowed");
+                                    tvLab101Access.setTextColor(
+                                            getResources().getColor(android.R.color.holo_green_dark));
+                                } else {
+                                    tvLab101Access.setText("❌ Not allowed");
+                                    tvLab101Access.setTextColor(
+                                            getResources().getColor(android.R.color.holo_red_dark));
+                                }
+
                                 break;
                             }
                         }
@@ -100,6 +109,8 @@ public class NfcCardActivity extends AppCompatActivity {
                             tvStudentName.setText("—");
                             tvStudentId.setText("—");
                             tvLab101Access.setText("❌ Not allowed");
+                            tvLab101Access.setTextColor(
+                                    getResources().getColor(android.R.color.holo_red_dark));
                             Toast.makeText(NfcCardActivity.this,
                                     "No card linked. Contact admin.",
                                     Toast.LENGTH_LONG).show();
