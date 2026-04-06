@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F5F5"
+    android:orientation="vertical">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#7B1A2E"
+        app:navigationIcon="?attr/homeAsUpIndicator"
+        app:navigationIconTint="#FFFFFF"
+        app:title="Admin Setup"
+        app:titleTextColor="#FFFFFF" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Create New Admin"
+                        android:textColor="#333333"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="16dp"/>
+
+                    <EditText
+                        android:id="@+id/etNewAdminEmail"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Admin Email"
+                        android:inputType="textEmailAddress"
+                        android:padding="12dp"
+                        android:background="#F5F5F5"
+                        android:layout_marginBottom="12dp"/>
+
+                    <EditText
+                        android:id="@+id/etNewAdminPassword"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Password (Min 6 chars)"
+                        android:inputType="textPassword"
+                        android:padding="12dp"
+                        android:background="#F5F5F5"
+                        android:layout_marginBottom="8dp"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Note: Creating an account will automatically sign you in as the new admin."
+                        android:textSize="11sp"
+                        android:textColor="#888888"
+                        android:layout_marginBottom="16dp"/>
+
+                    <Button
+                        android:id="@+id/btnCreateAdmin"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:text="Create Admin Profile"
+                        android:backgroundTint="#7B1A2E"
+                        android:textColor="#FFFFFF"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Delete Admin Privileges"
+                        android:textColor="#333333"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="16dp"/>
+
+                    <EditText
+                        android:id="@+id/etDeleteAdminEmail"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Email of Admin to remove"
+                        android:inputType="textEmailAddress"
+                        android:padding="12dp"
+                        android:background="#F5F5F5"
+                        android:layout_marginBottom="16dp"/>
+
+                    <Button
+                        android:id="@+id/btnDeleteAdmin"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:text="Revoke Access"
+                        android:backgroundTint="#FFE0E0"
+                        android:textColor="#7B1A2E"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                android:id="@+id/tvAdminStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:gravity="center"
+                android:textColor="#7B1A2E"
+                android:textSize="14sp"
+                android:textStyle="italic" />
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

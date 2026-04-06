@@ -2,16 +2,13 @@ package com.example.nfc_based_student_lab_access_app;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.os.Bundle;
-import android.view.Gravity;
 import android.widget.Button;
-import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -21,18 +18,11 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-
 public class AdminActivity extends AppCompatActivity {
 
-    EditText etUID, etStudentName, etStudentId;
-    Button btnAddUID, btnRemoveUID, btnLogout;
+    Button btnLogout;
     TextView tvStatus;
-    LinearLayout llOccupancyContainer, llLogsContainer;
+    CardView cvManageStudents, cvLabOccupancy, cvLogs, cvAdminSetup;
 
     DatabaseReference db;
     FirebaseAuth mAuth;
@@ -51,296 +41,55 @@ public class AdminActivity extends AppCompatActivity {
             return;
         }
 
-        etUID                = findViewById(R.id.etUID);
-        etStudentName        = findViewById(R.id.etStudentName);
-        etStudentId          = findViewById(R.id.etStudentId);
-        btnAddUID            = findViewById(R.id.btnAddUID);
-        btnRemoveUID         = findViewById(R.id.btnRemoveUID);
-        btnLogout            = findViewById(R.id.btnLogout);
-        tvStatus             = findViewById(R.id.tvStatus);
-        llOccupancyContainer = findViewById(R.id.llOccupancyContainer);
-        llLogsContainer      = findViewById(R.id.llLogsContainer);
+        btnLogout         = findViewById(R.id.btnLogout);
+        tvStatus          = findViewById(R.id.tvStatus);
+        cvManageStudents  = findViewById(R.id.cvManageStudents);
+        cvLabOccupancy    = findViewById(R.id.cvLabOccupancy);
+        cvLogs            = findViewById(R.id.cvLogs);
+        cvAdminSetup      = findViewById(R.id.cvAdminSetup);
+
+        // Disable cards initially until admin status is confirmed
+        setCardsEnabled(false);
 
         String currentUID = user.getUid();
         db.child("admins").child(currentUID)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (!snapshot.exists()) {
-                            tvStatus.setText("Access denied: Admins only");
-                            btnAddUID.setEnabled(false);
-                            btnRemoveUID.setEnabled(false);
+                        if (snapshot.exists()) {
+                            tvStatus.setText("Status: Verified");
+                            setCardsEnabled(true);
+                        } else {
+                            tvStatus.setText("Status: Access denied (Admins only)");
                         }
                     }
                     @Override
-                    public void onCancelled(@NonNull DatabaseError error) {}
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        tvStatus.setText("Status: Database Error");
+                    }
                 });
 
-        setupOccupancyListener();
-        loadAccessLogs();
+        // Setup Navigation Click Listeners
+        cvManageStudents.setOnClickListener(v -> startActivity(new Intent(AdminActivity.this, ManageStudentsActivity.class)));
+        cvLabOccupancy.setOnClickListener(v -> startActivity(new Intent(AdminActivity.this, ManageOccupancyActivity.class)));
+        cvLogs.setOnClickListener(v -> startActivity(new Intent(AdminActivity.this, AccessLogsActivity.class)));
+        cvAdminSetup.setOnClickListener(v -> startActivity(new Intent(AdminActivity.this, AdminSetupActivity.class)));
 
-        btnAddUID.setOnClickListener(v -> addUID());
-        btnRemoveUID.setOnClickListener(v -> removeUID());
         btnLogout.setOnClickListener(v -> logoutUser());
     }
 
-    // ==========================================
-    // LAB OCCUPANCY LOGIC
-    // ==========================================
-    private void setupOccupancyListener() {
-        db.child("occupancy").addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                llOccupancyContainer.removeAllViews();
+    private void setCardsEnabled(boolean isEnabled) {
+        cvManageStudents.setEnabled(isEnabled);
+        cvLabOccupancy.setEnabled(isEnabled);
+        cvLogs.setEnabled(isEnabled);
+        cvAdminSetup.setEnabled(isEnabled);
 
-                for (DataSnapshot labSnap : snapshot.getChildren()) {
-                    String labKey = labSnap.getKey();
-
-                    Long count = labSnap.child("current_count").getValue(Long.class);
-                    Long max = labSnap.child("max_capacity").getValue(Long.class);
-                    String displayName = labSnap.child("display_name").getValue(String.class);
-
-                    if (displayName == null) displayName = labKey;
-                    if (count == null) count = 0L;
-                    if (max == null) max = 30L;
-
-                    addLabToView(labKey, displayName, count, max);
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
-        });
-    }
-
-    private void addLabToView(String labKey, String displayName, Long count, Long max) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, 16, 0, 16);
-
-        TextView tvName = new TextView(this);
-        tvName.setText("Lab " + displayName);
-        tvName.setTextSize(14f);
-        tvName.setTypeface(null, android.graphics.Typeface.BOLD);
-        tvName.setTextColor(Color.BLACK);
-        tvName.setLayoutParams(new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        int buttonSize = (int) (40 * getResources().getDisplayMetrics().density);
-
-        Button btnDec = new Button(this);
-        btnDec.setText("-");
-        btnDec.setTextSize(18f);
-        btnDec.setTypeface(null, android.graphics.Typeface.BOLD);
-        btnDec.setTextColor(Color.parseColor("#7B1A2E"));
-        btnDec.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FFE0E0")));
-        btnDec.setPadding(0, 0, 0, 0);
-        btnDec.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams decParams = new LinearLayout.LayoutParams(buttonSize, buttonSize);
-        decParams.setMargins(0, 0, 16, 0);
-        btnDec.setLayoutParams(decParams);
-        btnDec.setOnClickListener(v -> adjustOccupancy(labKey, -1));
-
-        TextView tvOcc = new TextView(this);
-        tvOcc.setText(count + " / " + max);
-        tvOcc.setTextSize(14f);
-        tvOcc.setTypeface(null, android.graphics.Typeface.BOLD);
-        tvOcc.setTextColor(Color.parseColor("#7B1A2E"));
-        tvOcc.setPadding(16, 16, 16, 16);
-
-        Button btnInc = new Button(this);
-        btnInc.setText("+");
-        btnInc.setTextSize(18f);
-        btnInc.setTypeface(null, android.graphics.Typeface.BOLD);
-        btnInc.setTextColor(Color.WHITE);
-        btnInc.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#7B1A2E")));
-        btnInc.setPadding(0, 0, 0, 0);
-        btnInc.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams incParams = new LinearLayout.LayoutParams(buttonSize, buttonSize);
-        incParams.setMargins(16, 0, 0, 0);
-        btnInc.setLayoutParams(incParams);
-        btnInc.setOnClickListener(v -> adjustOccupancy(labKey, 1));
-
-        row.addView(tvName);
-        row.addView(btnDec);
-        row.addView(tvOcc);
-        row.addView(btnInc);
-
-        llOccupancyContainer.addView(row);
-    }
-
-    private void adjustOccupancy(String labKey, int change) {
-        DatabaseReference countRef = db.child("occupancy").child(labKey).child("current_count");
-        countRef.get().addOnSuccessListener(snapshot -> {
-            Long currentCount = snapshot.getValue(Long.class);
-            if (currentCount != null) {
-                long newCount = currentCount + change;
-                if (newCount >= 0) {
-                    countRef.setValue(newCount);
-                }
-            }
-        });
-    }
-
-    // ==========================================
-    // ACCESS LOGS LOGIC
-    // ==========================================
-    private void loadAccessLogs() {
-        db.child("access_logs").orderByChild("timestamp").limitToLast(20)
-                .addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        llLogsContainer.removeAllViews();
-
-                        if (!snapshot.exists()) {
-                            TextView tvEmpty = new TextView(AdminActivity.this);
-                            tvEmpty.setText("No logs found.");
-                            llLogsContainer.addView(tvEmpty);
-                            return;
-                        }
-
-                        for (DataSnapshot logSnap : snapshot.getChildren()) {
-                            String uid      = logSnap.child("uid").getValue(String.class);
-                            String time     = logSnap.child("timestamp").getValue(String.class);
-                            String decision = logSnap.child("decision").getValue(String.class);
-                            String labRoom  = logSnap.child("lab_room").getValue(String.class);
-
-                            addLogEntryToView(uid, time, decision, labRoom);
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {}
-                });
-    }
-
-    private void addLogEntryToView(String uid, String time, String decision, String labRoom) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(0, 16, 0, 16);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-
-        LinearLayout textContainer = new LinearLayout(this);
-        textContainer.setOrientation(LinearLayout.VERTICAL);
-        textContainer.setLayoutParams(new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        TextView tvDetails = new TextView(this);
-        String roomDisplay = (labRoom != null) ? " - " + labRoom : "";
-        tvDetails.setText("UID: " + (uid != null ? uid : "Unknown") + roomDisplay);
-        tvDetails.setTextSize(14f);
-        tvDetails.setTextColor(Color.BLACK);
-        tvDetails.setTypeface(null, android.graphics.Typeface.BOLD);
-
-        TextView tvTime = new TextView(this);
-        String displayTime = (time != null) ? time.replace("T", " ") : "Unknown Time";
-        tvTime.setText(displayTime);
-        tvTime.setTextSize(12f);
-        tvTime.setTextColor(Color.parseColor("#888888"));
-
-        textContainer.addView(tvDetails);
-        textContainer.addView(tvTime);
-
-        TextView tvStatusBadge = new TextView(this);
-        tvStatusBadge.setPadding(24, 8, 24, 8);
-        tvStatusBadge.setTextSize(12f);
-        tvStatusBadge.setTypeface(null, android.graphics.Typeface.BOLD);
-
-        if ("allow".equalsIgnoreCase(decision)) {
-            tvStatusBadge.setText("ALLOWED");
-            tvStatusBadge.setTextColor(Color.parseColor("#2E7D32"));
-            tvStatusBadge.setBackgroundColor(Color.parseColor("#E8F5E9"));
-        } else {
-            tvStatusBadge.setText("DENIED");
-            tvStatusBadge.setTextColor(Color.parseColor("#C62828"));
-            tvStatusBadge.setBackgroundColor(Color.parseColor("#FFEBEE"));
-        }
-
-        row.addView(textContainer);
-        row.addView(tvStatusBadge);
-
-        llLogsContainer.addView(row, 0);
-    }
-
-    // ==========================================
-    // USER MANAGEMENT LOGIC
-    // ==========================================
-    private void addUID() {
-        String uid  = etUID.getText().toString().trim();
-        String name = etStudentName.getText().toString().trim();
-        String sid  = etStudentId.getText().toString().trim();
-
-        if (uid.isEmpty() || name.isEmpty() || sid.isEmpty()) {
-            tvStatus.setText("Please fill in all fields");
-            return;
-        }
-
-        String timestamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                .format(new Date());
-
-        Map<String, Object> student = new HashMap<>();
-        student.put("student_name", name);
-        student.put("student_id",   sid);
-        student.put("added_at",     timestamp);
-        student.put("auth_uid",     "");
-        student.put("Access",       false);
-
-        db.child("authorized_uids").child(uid).setValue(student)
-                .addOnSuccessListener(a -> {
-                    tvStatus.setText("✅ Student added successfully");
-                    etUID.setText("");
-                    etStudentName.setText("");
-                    etStudentId.setText("");
-                })
-                .addOnFailureListener(e -> tvStatus.setText("Error: " + e.getMessage()));
-    }
-
-    private void removeUID() {
-        String uid = etUID.getText().toString().trim();
-        if (uid.isEmpty()) {
-            tvStatus.setText("Please enter a UID");
-            return;
-        }
-
-        // First fetch the auth_uid so we can revoke access
-        db.child("authorized_uids").child(uid)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (!snapshot.exists()) {
-                            tvStatus.setText("❌ UID not found in database");
-                            return;
-                        }
-
-                        // Step 1: Clear auth_uid and set Access to false
-                        // This blocks login via auto-login and NFC access
-                        Map<String, Object> revoke = new HashMap<>();
-                        revoke.put("auth_uid", "");
-                        revoke.put("Access", false);
-
-                        db.child("authorized_uids").child(uid)
-                                .updateChildren(revoke)
-                                .addOnSuccessListener(a -> {
-                                    // Step 2: Remove the entry entirely
-                                    db.child("authorized_uids").child(uid)
-                                            .removeValue()
-                                            .addOnSuccessListener(b -> {
-                                                tvStatus.setText("✅ Student removed successfully");
-                                                etUID.setText("");
-                                            })
-                                            .addOnFailureListener(e ->
-                                                    tvStatus.setText("Error removing: " + e.getMessage()));
-                                })
-                                .addOnFailureListener(e ->
-                                        tvStatus.setText("Error revoking access: " + e.getMessage()));
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        tvStatus.setText("Error: " + error.getMessage());
-                    }
-                });
+        // Optional: Dim the cards visually if disabled
+        float alpha = isEnabled ? 1.0f : 0.5f;
+        cvManageStudents.setAlpha(alpha);
+        cvLabOccupancy.setAlpha(alpha);
+        cvLogs.setAlpha(alpha);
+        cvAdminSetup.setAlpha(alpha);
     }
 
     private void logoutUser() {

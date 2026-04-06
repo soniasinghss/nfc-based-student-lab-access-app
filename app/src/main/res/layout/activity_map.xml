@@ -57,119 +57,61 @@
                 android:orientation="vertical"
                 android:padding="12dp">
 
-                <FrameLayout
+                <WebView
+                    android:id="@+id/wvMap"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
-                    android:layout_weight="1">
-
-                    <ImageView
-                        android:id="@+id/ivMap"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:adjustViewBounds="true"
-                        android:contentDescription="8th floor map"
-                        android:scaleType="fitCenter" />
-
-                    <View
-                        android:id="@+id/H843"
-                        android:layout_width="80dp"
-                        android:layout_height="80dp"
-                        android:layout_gravity="bottom|start"
-                        android:layout_marginStart="20dp"
-                        android:layout_marginBottom="20dp"
-                        android:background="#00000000"
-                        android:clickable="true"
-                        android:focusable="true" />
-
-                </FrameLayout>
+                    android:layout_weight="1" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:orientation="horizontal"
-                    android:paddingTop="10dp">
+                    android:orientation="vertical"
+                    android:paddingTop="12dp"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp">
 
                     <LinearLayout
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginEnd="12dp"
                         android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:layout_marginBottom="6dp">
 
-                        <View
-                            android:layout_width="12dp"
-                            android:layout_height="12dp"
-                            android:background="#4CAF50" />
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Empty"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textColor="#4A4A57"/>
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text=" Low"
-                            android:textColor="#4A4A57"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="12dp"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <View
-                            android:layout_width="12dp"
-                            android:layout_height="12dp"
-                            android:background="#FBC02D" />
+                            android:text="Half Full"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textColor="#4A4A57"/>
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text=" Medium"
-                            android:textColor="#4A4A57"
-                            android:textSize="12sp" />
+                            android:layout_weight="1"
+                            android:gravity="end"
+                            android:text="Full"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textColor="#4A4A57"/>
                     </LinearLayout>
 
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="12dp"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <View
-                            android:layout_width="12dp"
-                            android:layout_height="12dp"
-                            android:background="#F57C00" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text=" High"
-                            android:textColor="#4A4A57"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <View
-                            android:layout_width="12dp"
-                            android:layout_height="12dp"
-                            android:background="#932339" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text=" Full"
-                            android:textColor="#4A4A57"
-                            android:textSize="12sp" />
-                    </LinearLayout>
+                    <View
+                        android:id="@+id/vGradientBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="14dp" />
 
                 </LinearLayout>
+
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 

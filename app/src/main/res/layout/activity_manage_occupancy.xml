@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F5F5"
+    android:orientation="vertical">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#7B1A2E"
+        app:navigationIcon="?attr/homeAsUpIndicator"
+        app:navigationIconTint="#FFFFFF"
+        app:title="Lab Occupancy"
+        app:titleTextColor="#FFFFFF" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="#FFFFFF"
+        android:elevation="4dp">
+
+        <EditText
+            android:id="@+id/etSearchRoom"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Look up room number..."
+            android:padding="12dp"
+            android:background="#F0F0F0"
+            android:drawableStart="@android:drawable/ic_menu_search"
+            android:drawablePadding="8dp"
+            android:layout_marginBottom="12dp"
+            android:textSize="14sp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Filter Floor: "
+                android:textStyle="bold"
+                android:textColor="#333333"/>
+
+            <Spinner
+                android:id="@+id/spinnerFloor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="40dp"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/llOccupancyContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
