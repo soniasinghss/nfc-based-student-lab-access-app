@@ -61,7 +61,6 @@ public class AdminActivity extends AppCompatActivity {
         llOccupancyContainer = findViewById(R.id.llOccupancyContainer);
         llLogsContainer      = findViewById(R.id.llLogsContainer);
 
-        // Admin Auth Check
         String currentUID = user.getUid();
         db.child("admins").child(currentUID)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
@@ -77,33 +76,30 @@ public class AdminActivity extends AppCompatActivity {
                     public void onCancelled(@NonNull DatabaseError error) {}
                 });
 
-        // Initialize Dynamic Content
         setupOccupancyListener();
         loadAccessLogs();
 
-        // Click Listeners
         btnAddUID.setOnClickListener(v -> addUID());
         btnRemoveUID.setOnClickListener(v -> removeUID());
         btnLogout.setOnClickListener(v -> logoutUser());
     }
 
     // ==========================================
-    // LAB OCCUPANCY LOGIC (DYNAMIC LABS)
+    // LAB OCCUPANCY LOGIC
     // ==========================================
     private void setupOccupancyListener() {
         db.child("occupancy").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                llOccupancyContainer.removeAllViews(); // Clear previous list
+                llOccupancyContainer.removeAllViews();
 
                 for (DataSnapshot labSnap : snapshot.getChildren()) {
-                    String labKey = labSnap.getKey(); // e.g. H843, lab-101
+                    String labKey = labSnap.getKey();
 
                     Long count = labSnap.child("current_count").getValue(Long.class);
                     Long max = labSnap.child("max_capacity").getValue(Long.class);
                     String displayName = labSnap.child("display_name").getValue(String.class);
 
-                    // Fallbacks just in case data is missing
                     if (displayName == null) displayName = labKey;
                     if (count == null) count = 0L;
                     if (max == null) max = 30L;
@@ -118,13 +114,11 @@ public class AdminActivity extends AppCompatActivity {
     }
 
     private void addLabToView(String labKey, String displayName, Long count, Long max) {
-        // Main row container
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(0, 16, 0, 16);
 
-        // Lab Name (Takes up remaining space)
         TextView tvName = new TextView(this);
         tvName.setText("Lab " + displayName);
         tvName.setTextSize(14f);
@@ -133,27 +127,21 @@ public class AdminActivity extends AppCompatActivity {
         tvName.setLayoutParams(new LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-        // Helper to convert to 'dp' so it scales properly on all screen densities
         int buttonSize = (int) (40 * getResources().getDisplayMetrics().density);
 
-        // Decrement (-) Button
         Button btnDec = new Button(this);
         btnDec.setText("-");
         btnDec.setTextSize(18f);
         btnDec.setTypeface(null, android.graphics.Typeface.BOLD);
-        btnDec.setTextColor(Color.parseColor("#7B1A2E")); // Dark Red Text
-        btnDec.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FFE0E0"))); // Light Red BG
-
-        // Strip default padding so the text isn't squished
+        btnDec.setTextColor(Color.parseColor("#7B1A2E"));
+        btnDec.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FFE0E0")));
         btnDec.setPadding(0, 0, 0, 0);
         btnDec.setGravity(Gravity.CENTER);
-
         LinearLayout.LayoutParams decParams = new LinearLayout.LayoutParams(buttonSize, buttonSize);
         decParams.setMargins(0, 0, 16, 0);
         btnDec.setLayoutParams(decParams);
         btnDec.setOnClickListener(v -> adjustOccupancy(labKey, -1));
 
-        // Count / Max Display
         TextView tvOcc = new TextView(this);
         tvOcc.setText(count + " / " + max);
         tvOcc.setTextSize(14f);
@@ -161,30 +149,24 @@ public class AdminActivity extends AppCompatActivity {
         tvOcc.setTextColor(Color.parseColor("#7B1A2E"));
         tvOcc.setPadding(16, 16, 16, 16);
 
-        // Increment (+) Button
         Button btnInc = new Button(this);
         btnInc.setText("+");
         btnInc.setTextSize(18f);
         btnInc.setTypeface(null, android.graphics.Typeface.BOLD);
         btnInc.setTextColor(Color.WHITE);
-        btnInc.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#7B1A2E"))); // Dark Red BG
-
-        // Strip default padding so the text isn't squished
+        btnInc.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#7B1A2E")));
         btnInc.setPadding(0, 0, 0, 0);
         btnInc.setGravity(Gravity.CENTER);
-
         LinearLayout.LayoutParams incParams = new LinearLayout.LayoutParams(buttonSize, buttonSize);
         incParams.setMargins(16, 0, 0, 0);
         btnInc.setLayoutParams(incParams);
         btnInc.setOnClickListener(v -> adjustOccupancy(labKey, 1));
 
-        // Assemble the row
         row.addView(tvName);
         row.addView(btnDec);
         row.addView(tvOcc);
         row.addView(btnInc);
 
-        // Add to main container
         llOccupancyContainer.addView(row);
     }
 
@@ -194,7 +176,7 @@ public class AdminActivity extends AppCompatActivity {
             Long currentCount = snapshot.getValue(Long.class);
             if (currentCount != null) {
                 long newCount = currentCount + change;
-                if (newCount >= 0) { // Prevent negative counts
+                if (newCount >= 0) {
                     countRef.setValue(newCount);
                 }
             }
@@ -205,7 +187,6 @@ public class AdminActivity extends AppCompatActivity {
     // ACCESS LOGS LOGIC
     // ==========================================
     private void loadAccessLogs() {
-        // Listen to the last 20 logs so the UI stays responsive
         db.child("access_logs").orderByChild("timestamp").limitToLast(20)
                 .addValueEventListener(new ValueEventListener() {
                     @Override
@@ -220,10 +201,10 @@ public class AdminActivity extends AppCompatActivity {
                         }
 
                         for (DataSnapshot logSnap : snapshot.getChildren()) {
-                            String uid = logSnap.child("uid").getValue(String.class);
-                            String time = logSnap.child("timestamp").getValue(String.class);
+                            String uid      = logSnap.child("uid").getValue(String.class);
+                            String time     = logSnap.child("timestamp").getValue(String.class);
                             String decision = logSnap.child("decision").getValue(String.class);
-                            String labRoom = logSnap.child("lab_room").getValue(String.class);
+                            String labRoom  = logSnap.child("lab_room").getValue(String.class);
 
                             addLogEntryToView(uid, time, decision, labRoom);
                         }
@@ -279,7 +260,6 @@ public class AdminActivity extends AppCompatActivity {
         row.addView(textContainer);
         row.addView(tvStatusBadge);
 
-        // Add to index 0 so newest logs appear at the top
         llLogsContainer.addView(row, 0);
     }
 
@@ -303,7 +283,8 @@ public class AdminActivity extends AppCompatActivity {
         student.put("student_name", name);
         student.put("student_id",   sid);
         student.put("added_at",     timestamp);
-        student.put("auth_uid", "");
+        student.put("auth_uid",     "");
+        student.put("Access",       false);
 
         db.child("authorized_uids").child(uid).setValue(student)
                 .addOnSuccessListener(a -> {
@@ -321,12 +302,45 @@ public class AdminActivity extends AppCompatActivity {
             tvStatus.setText("Please enter a UID");
             return;
         }
-        db.child("authorized_uids").child(uid).removeValue()
-                .addOnSuccessListener(a -> {
-                    tvStatus.setText("✅ Student removed successfully");
-                    etUID.setText("");
-                })
-                .addOnFailureListener(e -> tvStatus.setText("Error: " + e.getMessage()));
+
+        // First fetch the auth_uid so we can revoke access
+        db.child("authorized_uids").child(uid)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (!snapshot.exists()) {
+                            tvStatus.setText("❌ UID not found in database");
+                            return;
+                        }
+
+                        // Step 1: Clear auth_uid and set Access to false
+                        // This blocks login via auto-login and NFC access
+                        Map<String, Object> revoke = new HashMap<>();
+                        revoke.put("auth_uid", "");
+                        revoke.put("Access", false);
+
+                        db.child("authorized_uids").child(uid)
+                                .updateChildren(revoke)
+                                .addOnSuccessListener(a -> {
+                                    // Step 2: Remove the entry entirely
+                                    db.child("authorized_uids").child(uid)
+                                            .removeValue()
+                                            .addOnSuccessListener(b -> {
+                                                tvStatus.setText("✅ Student removed successfully");
+                                                etUID.setText("");
+                                            })
+                                            .addOnFailureListener(e ->
+                                                    tvStatus.setText("Error removing: " + e.getMessage()));
+                                })
+                                .addOnFailureListener(e ->
+                                        tvStatus.setText("Error revoking access: " + e.getMessage()));
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        tvStatus.setText("Error: " + error.getMessage());
+                    }
+                });
     }
 
     private void logoutUser() {

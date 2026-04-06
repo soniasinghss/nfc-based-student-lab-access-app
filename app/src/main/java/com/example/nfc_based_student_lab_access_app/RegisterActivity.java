@@ -85,8 +85,12 @@ public class RegisterActivity extends AppCompatActivity {
             showError("Password is required");
             return;
         }
-        if (password.length() < 6) {
-            showError("Password must be at least 6 characters");
+        if (password.length() < 8) {
+            showError("Password must be at least 8 characters");
+            return;
+        }
+        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
+            showError("Password must contain at least one special character (!@#$%^&* etc.)");
             return;
         }
         if (!password.equals(confirm)) {
@@ -159,10 +163,10 @@ public class RegisterActivity extends AppCompatActivity {
                     mDatabase.child("authorized_uids").child(nfcKey)
                             .updateChildren(updates)
                             .addOnSuccessListener(unused -> {
-                                Toast.makeText(this,
+                                Toast.makeText(RegisterActivity.this,
                                         "Account created and linked to your NFC card!",
                                         Toast.LENGTH_LONG).show();
-                                Intent intent = new Intent(this, UserActivity.class);
+                                Intent intent = new Intent(RegisterActivity.this, UserActivity.class);
                                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
                                         Intent.FLAG_ACTIVITY_CLEAR_TASK);
                                 startActivity(intent);

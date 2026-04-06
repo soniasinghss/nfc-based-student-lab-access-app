@@ -1,8 +1,11 @@
 package com.example.nfc_based_student_lab_access_app;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
@@ -11,8 +14,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -28,11 +32,16 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class UserActivity extends AppCompatActivity {
+
+    private static final int NOTIF_PERMISSION_CODE = 101;
+    private static final String PREFS_SUBSCRIPTIONS = "lab_subscriptions";
 
     private DatabaseReference mDatabase;
     private FirebaseAuth mAuth;
@@ -40,6 +49,11 @@ public class UserActivity extends AppCompatActivity {
     private LinearLayout llLabRooms;
     private EditText etSearchBox;
     private List<String> allLabRooms = new ArrayList<>();
+
+    // Tracks which labs were full when the user last saw them
+    private Map<String, Boolean> labWasFull = new HashMap<>();
+    // Active Firebase listeners per room so we can clean up
+    private Map<String, ValueEventListener> labListeners = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,42 +66,37 @@ public class UserActivity extends AppCompatActivity {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) { goToLogin(); return; }
 
+        // Set up notification channel
+        NotificationHelper.createChannel(this);
+
+        // Request notification permission on Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        NOTIF_PERMISSION_CODE);
+            }
+        }
+
         llLabRooms  = findViewById(R.id.llLabRooms);
         etSearchBox = findViewById(R.id.etSearchBox);
 
         fetchStudentProfile(user.getUid());
 
-        // Sign out button
         findViewById(R.id.btnSignOut).setOnClickListener(v -> logoutUser());
 
-        // Account overview click
         findViewById(R.id.cvAccountOverview).setOnClickListener(v ->
                 startActivity(new Intent(UserActivity.this, AccountOverviewActivity.class)));
 
-        // NFC Card click
         findViewById(R.id.cvNfcCard).setOnClickListener(v ->
                 startActivity(new Intent(UserActivity.this, NfcCardActivity.class)));
 
-        // Occupancy live listener
-        mDatabase.child("occupancy").child("lab-101")
-                .addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        Long count = snapshot.child("current_count").getValue(Long.class);
-                        Long max   = snapshot.child("max_capacity").getValue(Long.class);
-                        TextView tvOccupancy = findViewById(R.id.tvOccupancy);
-                        if (tvOccupancy != null && count != null && max != null) {
-                            tvOccupancy.setText(count + " / " + max);
-                        }
-                    }
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {}
-                });
+        findViewById(R.id.cvMap).setOnClickListener(v ->
+                startActivity(new Intent(UserActivity.this, MapActivity.class)));
 
-        // Load lab rooms dynamically
         loadLabRooms();
 
-        // Search filter
         etSearchBox.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void afterTextChanged(android.text.Editable s) {}
@@ -96,13 +105,16 @@ public class UserActivity extends AppCompatActivity {
                 filterLabRooms(s.toString().toLowerCase().trim());
             }
         });
-        findViewById(R.id.cvMap).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(UserActivity.this, MapActivity.class);
-                startActivity(intent);
-            }
-        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Clean up all Firebase listeners
+        for (Map.Entry<String, ValueEventListener> entry : labListeners.entrySet()) {
+            mDatabase.child("occupancy").child(entry.getKey())
+                    .removeEventListener(entry.getValue());
+        }
     }
 
     private void loadLabRooms() {
@@ -121,7 +133,14 @@ public class UserActivity extends AppCompatActivity {
     }
 
     private void filterLabRooms(String query) {
+        // Remove old listeners before clearing views
+        for (Map.Entry<String, ValueEventListener> entry : labListeners.entrySet()) {
+            mDatabase.child("occupancy").child(entry.getKey())
+                    .removeEventListener(entry.getValue());
+        }
+        labListeners.clear();
         llLabRooms.removeAllViews();
+
         for (String roomId : allLabRooms) {
             if (query.isEmpty() || roomId.toLowerCase().contains(query)) {
                 addRoomCard(roomId);
@@ -145,7 +164,7 @@ public class UserActivity extends AppCompatActivity {
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
         row.setPadding(40, 40, 40, 40);
 
-        // Green dot
+        // Status dot
         android.view.View dot = new android.view.View(this);
         LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(24, 24);
         dotParams.setMargins(0, 0, 36, 0);
@@ -164,30 +183,129 @@ public class UserActivity extends AppCompatActivity {
         tvName.setTextColor(Color.parseColor("#1A1A1A"));
         tvName.setTypeface(null, android.graphics.Typeface.BOLD);
 
-        TextView tvSub = new TextView(this);
-        tvSub.setText("Tap to check occupancy");
-        tvSub.setTextSize(12);
-        tvSub.setTextColor(Color.parseColor("#888888"));
+        TextView tvOccupancy = new TextView(this);
+        tvOccupancy.setText("Occupancy: loading...");
+        tvOccupancy.setTextSize(12);
+        tvOccupancy.setTextColor(Color.parseColor("#888888"));
 
         info.addView(tvName);
-        info.addView(tvSub);
+        info.addView(tvOccupancy);
 
-        // Arrow
-        TextView arrow = new TextView(this);
-        arrow.setText("›");
-        arrow.setTextSize(22);
-        arrow.setTextColor(Color.parseColor("#CCCCCC"));
+        // Bell icon — hidden by default, shown when lab is full
+        TextView tvBell = new TextView(this);
+        tvBell.setText("🔔");
+        tvBell.setTextSize(20);
+        tvBell.setVisibility(View.GONE);
+        tvBell.setPadding(16, 0, 0, 0);
+
+        // Update bell appearance based on subscription state
+        updateBellState(tvBell, roomId);
+
+        tvBell.setOnClickListener(v -> toggleSubscription(roomId, tvBell));
 
         row.addView(dot);
         row.addView(info);
-        row.addView(arrow);
+        row.addView(tvBell);
         card.addView(row);
+
+        // Live occupancy listener
+        ValueEventListener listener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                Long count = snapshot.child("current_count").getValue(Long.class);
+                Long max   = snapshot.child("max_capacity").getValue(Long.class);
+
+                if (count != null && max != null) {
+                    tvOccupancy.setText("Occupancy: " + count + " / " + max);
+
+                    boolean isFull = count >= max;
+
+                    // Update dot color
+                    if (isFull) {
+                        dot.setBackgroundColor(Color.parseColor("#EF4444")); // red
+                    } else {
+                        dot.setBackgroundColor(Color.parseColor("#22C55E")); // green
+                    }
+
+                    // Show bell only when full
+                    tvBell.setVisibility(isFull ? View.VISIBLE : View.GONE);
+                    updateBellState(tvBell, roomId);
+
+                    // Check if subscribed and lab just became available
+                    boolean wasFullBefore = Boolean.TRUE.equals(labWasFull.get(roomId));
+                    boolean isSubscribed  = isSubscribed(roomId);
+
+                    if (wasFullBefore && !isFull && isSubscribed) {
+                        NotificationHelper.sendLabAvailableNotification(
+                                UserActivity.this, roomId);
+                        // Auto-unsubscribe after notifying
+                        unsubscribe(roomId);
+                        updateBellState(tvBell, roomId);
+                    }
+
+                    labWasFull.put(roomId, isFull);
+                } else {
+                    tvOccupancy.setText("Occupancy: unavailable");
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                tvOccupancy.setText("Occupancy: error");
+            }
+        };
+
+        mDatabase.child("occupancy").child(roomId).addValueEventListener(listener);
+        labListeners.put(roomId, listener);
 
         card.setOnClickListener(v -> checkRoomOccupancy(roomId));
         llLabRooms.addView(card);
     }
 
-    // Fetch profile by matching auth_uid
+    // ==========================================
+    // SUBSCRIPTION HELPERS
+    // ==========================================
+    private SharedPreferences getSubPrefs() {
+        return getSharedPreferences(PREFS_SUBSCRIPTIONS, MODE_PRIVATE);
+    }
+
+    private boolean isSubscribed(String roomId) {
+        return getSubPrefs().getBoolean(roomId, false);
+    }
+
+    private void subscribe(String roomId) {
+        getSubPrefs().edit().putBoolean(roomId, true).apply();
+    }
+
+    private void unsubscribe(String roomId) {
+        getSubPrefs().edit().putBoolean(roomId, false).apply();
+    }
+
+    private void updateBellState(TextView tvBell, String roomId) {
+        if (isSubscribed(roomId)) {
+            tvBell.setAlpha(1.0f);
+            tvBell.setTextSize(20);
+        } else {
+            tvBell.setAlpha(0.4f);
+        }
+    }
+
+    private void toggleSubscription(String roomId, TextView tvBell) {
+        if (isSubscribed(roomId)) {
+            unsubscribe(roomId);
+            Toast.makeText(this, "Unsubscribed from " + roomId.toUpperCase(),
+                    Toast.LENGTH_SHORT).show();
+        } else {
+            subscribe(roomId);
+            Toast.makeText(this, "You'll be notified when "
+                    + roomId.toUpperCase() + " has space", Toast.LENGTH_SHORT).show();
+        }
+        updateBellState(tvBell, roomId);
+    }
+
+    // ==========================================
+    // PROFILE & STATS
+    // ==========================================
     private void fetchStudentProfile(String authUid) {
         mDatabase.child("authorized_uids")
                 .addListenerForSingleValueEvent(new ValueEventListener() {
@@ -227,7 +345,6 @@ public class UserActivity extends AppCompatActivity {
                 });
     }
 
-    // Calculate monthly stats
     private void calculateUserStats(String nfcUid) {
         mDatabase.child("access_logs")
                 .orderByChild("uid")
@@ -264,7 +381,8 @@ public class UserActivity extends AppCompatActivity {
                                     total++;
                                     String room = log.child("lab_room").getValue(String.class);
                                     if (room != null)
-                                        roomCounts.put(room, roomCounts.getOrDefault(room, 0) + 1);
+                                        roomCounts.put(room,
+                                                roomCounts.getOrDefault(room, 0) + 1);
                                 }
                             } catch (ParseException e) { e.printStackTrace(); }
                         }
@@ -304,7 +422,7 @@ public class UserActivity extends AppCompatActivity {
                         if (snapshot.exists()) {
                             Long count = snapshot.child("current_count").getValue(Long.class);
                             Long max   = snapshot.child("max_capacity").getValue(Long.class);
-                            new AlertDialog.Builder(UserActivity.this)
+                            new androidx.appcompat.app.AlertDialog.Builder(UserActivity.this)
                                     .setTitle("Lab Room: " + roomId)
                                     .setMessage("Current Occupancy: " + count + " / " + max)
                                     .setPositiveButton("Close", null)
