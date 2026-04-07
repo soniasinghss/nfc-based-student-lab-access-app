@@ -71,6 +71,7 @@
                     android:paddingStart="8dp"
                     android:paddingEnd="8dp">
 
+                    <!-- Occupancy legend -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -84,7 +85,7 @@
                             android:text="Empty"
                             android:textSize="12sp"
                             android:textStyle="bold"
-                            android:textColor="#4A4A57"/>
+                            android:textColor="#4A4A57" />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -92,7 +93,7 @@
                             android:text="Half Full"
                             android:textSize="12sp"
                             android:textStyle="bold"
-                            android:textColor="#4A4A57"/>
+                            android:textColor="#4A4A57" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -102,13 +103,36 @@
                             android:text="Full"
                             android:textSize="12sp"
                             android:textStyle="bold"
-                            android:textColor="#4A4A57"/>
+                            android:textColor="#4A4A57" />
                     </LinearLayout>
 
                     <View
                         android:id="@+id/vGradientBar"
                         android:layout_width="match_parent"
-                        android:layout_height="14dp" />
+                        android:layout_height="14dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- Unavailable legend -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <View
+                            android:id="@+id/vUnavailableSwatch"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_marginEnd="8dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Unavailable now"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textColor="#4A4A57" />
+                    </LinearLayout>
 
                 </LinearLayout>
 

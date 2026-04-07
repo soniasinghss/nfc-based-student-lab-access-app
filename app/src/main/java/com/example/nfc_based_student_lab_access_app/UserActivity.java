@@ -123,17 +123,22 @@ public class UserActivity extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 allLabRooms.clear();
                 for (DataSnapshot room : snapshot.getChildren()) {
-                    allLabRooms.add(room.getKey());
+                    String roomId = room.getKey();
+                    if (roomId != null) {
+                        allLabRooms.add(roomId);
+                    }
                 }
-                filterLabRooms("");
+
+                llLabRooms.removeAllViews();
+                llLabRooms.setVisibility(View.GONE);
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
 
     private void filterLabRooms(String query) {
-        // Remove old listeners before clearing views
         for (Map.Entry<String, ValueEventListener> entry : labListeners.entrySet()) {
             mDatabase.child("occupancy").child(entry.getKey())
                     .removeEventListener(entry.getValue());
@@ -141,11 +146,21 @@ public class UserActivity extends AppCompatActivity {
         labListeners.clear();
         llLabRooms.removeAllViews();
 
+        if (query.isEmpty()) {
+            llLabRooms.setVisibility(View.GONE);
+            return;
+        }
+
+        boolean foundMatch = false;
+
         for (String roomId : allLabRooms) {
-            if (query.isEmpty() || roomId.toLowerCase().contains(query)) {
+            if (roomId != null && roomId.toLowerCase().contains(query)) {
                 addRoomCard(roomId);
+                foundMatch = true;
             }
         }
+
+        llLabRooms.setVisibility(foundMatch ? View.VISIBLE : View.GONE);
     }
 
     private void addRoomCard(String roomId) {
