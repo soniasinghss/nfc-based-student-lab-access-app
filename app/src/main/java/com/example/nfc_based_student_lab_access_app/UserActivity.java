@@ -32,11 +32,9 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 public class UserActivity extends AppCompatActivity {
 
@@ -49,10 +47,7 @@ public class UserActivity extends AppCompatActivity {
     private LinearLayout llLabRooms;
     private EditText etSearchBox;
     private List<String> allLabRooms = new ArrayList<>();
-
-    // Tracks which labs were full when the user last saw them
     private Map<String, Boolean> labWasFull = new HashMap<>();
-    // Active Firebase listeners per room so we can clean up
     private Map<String, ValueEventListener> labListeners = new HashMap<>();
 
     @Override
@@ -66,10 +61,8 @@ public class UserActivity extends AppCompatActivity {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) { goToLogin(); return; }
 
-        // Set up notification channel
         NotificationHelper.createChannel(this);
 
-        // Request notification permission on Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -110,7 +103,6 @@ public class UserActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Clean up all Firebase listeners
         for (Map.Entry<String, ValueEventListener> entry : labListeners.entrySet()) {
             mDatabase.child("occupancy").child(entry.getKey())
                     .removeEventListener(entry.getValue());
@@ -133,7 +125,6 @@ public class UserActivity extends AppCompatActivity {
     }
 
     private void filterLabRooms(String query) {
-        // Remove old listeners before clearing views
         for (Map.Entry<String, ValueEventListener> entry : labListeners.entrySet()) {
             mDatabase.child("occupancy").child(entry.getKey())
                     .removeEventListener(entry.getValue());
@@ -191,14 +182,12 @@ public class UserActivity extends AppCompatActivity {
         info.addView(tvName);
         info.addView(tvOccupancy);
 
-        // Bell icon — hidden by default, shown when lab is full
+        // Bell icon — always visible
         TextView tvBell = new TextView(this);
         tvBell.setText("🔔");
         tvBell.setTextSize(20);
-        tvBell.setVisibility(View.GONE);
+        tvBell.setVisibility(View.VISIBLE);
         tvBell.setPadding(16, 0, 0, 0);
-
-        // Update bell appearance based on subscription state
         updateBellState(tvBell, roomId);
 
         tvBell.setOnClickListener(v -> toggleSubscription(roomId, tvBell));
@@ -220,27 +209,21 @@ public class UserActivity extends AppCompatActivity {
 
                     boolean isFull = count >= max;
 
-                    // Update dot color
-                    if (isFull) {
-                        dot.setBackgroundColor(Color.parseColor("#EF4444")); // red
-                    } else {
-                        dot.setBackgroundColor(Color.parseColor("#22C55E")); // green
-                    }
+                    dot.setBackgroundColor(isFull
+                            ? Color.parseColor("#EF4444")
+                            : Color.parseColor("#22C55E"));
 
-                    // Show bell only when full
-                    tvBell.setVisibility(isFull ? View.VISIBLE : View.GONE);
-                    updateBellState(tvBell, roomId);
-
-                    // Check if subscribed and lab just became available
                     boolean wasFullBefore = Boolean.TRUE.equals(labWasFull.get(roomId));
                     boolean isSubscribed  = isSubscribed(roomId);
 
                     if (wasFullBefore && !isFull && isSubscribed) {
                         NotificationHelper.sendLabAvailableNotification(
                                 UserActivity.this, roomId);
-                        // Auto-unsubscribe after notifying
                         unsubscribe(roomId);
                         updateBellState(tvBell, roomId);
+                        Toast.makeText(UserActivity.this,
+                                roomId.toUpperCase() + " has space — unsubscribed",
+                                Toast.LENGTH_SHORT).show();
                     }
 
                     labWasFull.put(roomId, isFull);
@@ -282,12 +265,7 @@ public class UserActivity extends AppCompatActivity {
     }
 
     private void updateBellState(TextView tvBell, String roomId) {
-        if (isSubscribed(roomId)) {
-            tvBell.setAlpha(1.0f);
-            tvBell.setTextSize(20);
-        } else {
-            tvBell.setAlpha(0.4f);
-        }
+        tvBell.setAlpha(isSubscribed(roomId) ? 1.0f : 0.4f);
     }
 
     private void toggleSubscription(String roomId, TextView tvBell) {
