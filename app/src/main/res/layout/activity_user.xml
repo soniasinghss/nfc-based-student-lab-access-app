@@ -155,7 +155,7 @@
                     app:cardCornerRadius="12dp"
                     app:cardElevation="3dp"
                     app:cardBackgroundColor="#FFFFFF"
-                    android:layout_marginBottom="8dp">
+                    android:layout_marginBottom="20dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -189,66 +189,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="View your profile details"
-                                android:textSize="12sp"
-                                android:textColor="#888888"/>
-
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="›"
-                            android:textSize="22sp"
-                            android:textColor="#CCCCCC"/>
-
-                    </LinearLayout>
-                </androidx.cardview.widget.CardView>
-
-                <!-- NFC CARD -->
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/cvNfcCard"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="3dp"
-                    app:cardBackgroundColor="#FFFFFF"
-                    android:layout_marginBottom="20dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="🪪"
-                            android:textSize="20sp"
-                            android:layout_marginEnd="14dp"/>
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="My NFC Card"
-                                android:textSize="14sp"
-                                android:textStyle="bold"
-                                android:textColor="#1A1A1A"/>
-
-                            <TextView
-                                android:id="@+id/tvNfcUid"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Card UID: Loading..."
+                                android:text="View your profile and NFC card details"
                                 android:textSize="12sp"
                                 android:textColor="#888888"/>
 

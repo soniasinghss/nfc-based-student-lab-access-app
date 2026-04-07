@@ -81,10 +81,6 @@ public class UserActivity extends AppCompatActivity {
 
         findViewById(R.id.cvAccountOverview).setOnClickListener(v ->
                 startActivity(new Intent(UserActivity.this, AccountOverviewActivity.class)));
-
-        findViewById(R.id.cvNfcCard).setOnClickListener(v ->
-                startActivity(new Intent(UserActivity.this, NfcCardActivity.class)));
-
         findViewById(R.id.cvMap).setOnClickListener(v ->
                 startActivity(new Intent(UserActivity.this, MapActivity.class)));
 
@@ -120,11 +116,9 @@ public class UserActivity extends AppCompatActivity {
                         allLabRooms.add(roomId);
                     }
                 }
-
                 llLabRooms.removeAllViews();
                 llLabRooms.setVisibility(View.GONE);
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         });
@@ -198,14 +192,13 @@ public class UserActivity extends AppCompatActivity {
         info.addView(tvName);
         info.addView(tvOccupancy);
 
-        // Bell icon — always visible
+        // Bell icon
         TextView tvBell = new TextView(this);
         tvBell.setText("🔔");
         tvBell.setTextSize(20);
         tvBell.setVisibility(View.VISIBLE);
         tvBell.setPadding(16, 0, 0, 0);
         updateBellState(tvBell, roomId);
-
         tvBell.setOnClickListener(v -> toggleSubscription(roomId, tvBell));
 
         row.addView(dot);
@@ -224,7 +217,6 @@ public class UserActivity extends AppCompatActivity {
                     tvOccupancy.setText("Occupancy: " + count + " / " + max);
 
                     boolean isFull = count >= max;
-
                     dot.setBackgroundColor(isFull
                             ? Color.parseColor("#EF4444")
                             : Color.parseColor("#22C55E"));
@@ -247,7 +239,6 @@ public class UserActivity extends AppCompatActivity {
                     tvOccupancy.setText("Occupancy: unavailable");
                 }
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 tvOccupancy.setText("Occupancy: error");
@@ -257,6 +248,7 @@ public class UserActivity extends AppCompatActivity {
         mDatabase.child("occupancy").child(roomId).addValueEventListener(listener);
         labListeners.put(roomId, listener);
 
+        // Navigate to OccupancyHistoryActivity on tap
         card.setOnClickListener(v -> checkRoomOccupancy(roomId));
         llLabRooms.addView(card);
     }
@@ -316,12 +308,6 @@ public class UserActivity extends AppCompatActivity {
                                 TextView tvUserName = findViewById(R.id.tvUserName);
                                 if (name != null && tvUserName != null)
                                     tvUserName.setText(name);
-
-                                TextView tvNfcUid = findViewById(R.id.tvNfcUid);
-                                if (tvNfcUid != null && nfcUid != null)
-                                    tvNfcUid.setText("Card UID: " + nfcUid);
-
-                                calculateUserStats(nfcUid);
                                 break;
                             }
                         }
@@ -408,30 +394,11 @@ public class UserActivity extends AppCompatActivity {
         if (tvMostVisited != null) tvMostVisited.setText(best);
     }
 
+    // Navigate to OccupancyHistoryActivity
     private void checkRoomOccupancy(String roomId) {
-        mDatabase.child("occupancy").child(roomId)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (snapshot.exists()) {
-                            Long count = snapshot.child("current_count").getValue(Long.class);
-                            Long max   = snapshot.child("max_capacity").getValue(Long.class);
-                            new androidx.appcompat.app.AlertDialog.Builder(UserActivity.this)
-                                    .setTitle("Lab Room: " + roomId)
-                                    .setMessage("Current Occupancy: " + count + " / " + max)
-                                    .setPositiveButton("Close", null)
-                                    .show();
-                        } else {
-                            Toast.makeText(UserActivity.this,
-                                    "Room data not found.", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        Toast.makeText(UserActivity.this,
-                                "Error fetching data.", Toast.LENGTH_SHORT).show();
-                    }
-                });
+        Intent intent = new Intent(this, LabDetailActivity.class);
+        intent.putExtra("room_id", roomId);
+        startActivity(intent);
     }
 
     private void logoutUser() {
