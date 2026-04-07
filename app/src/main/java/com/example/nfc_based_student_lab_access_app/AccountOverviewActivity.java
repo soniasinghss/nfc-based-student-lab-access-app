@@ -1,5 +1,6 @@
 package com.example.nfc_based_student_lab_access_app;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.MenuItem;
@@ -80,6 +81,10 @@ public class AccountOverviewActivity extends AppCompatActivity {
         if (user == null) { finish(); return; }
 
         fetchStudentProfile(user.getUid());
+
+        // Navigate to NFC Card details page
+        findViewById(R.id.btnViewNfcCard).setOnClickListener(v ->
+                startActivity(new Intent(AccountOverviewActivity.this, NfcCardActivity.class)));
     }
 
     @Override
@@ -119,7 +124,6 @@ public class AccountOverviewActivity extends AppCompatActivity {
                                 TextView tvAdded = findViewById(R.id.tvAccountAddedAt);
                                 if (tvAdded != null) tvAdded.setText(addedAt != null ? addedAt : "—");
 
-                                // NFC access status
                                 TextView tvNfcStatus = findViewById(R.id.tvAccountNfcStatus);
                                 if (tvNfcStatus != null)
                                     tvNfcStatus.setText(nfcUid != null ? "✅ Active" : "❌ No card");
@@ -155,19 +159,17 @@ public class AccountOverviewActivity extends AppCompatActivity {
                         int currentYear  = now.get(Calendar.YEAR);
                         SimpleDateFormat sdf = new SimpleDateFormat(
                                 "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+
                         android.util.Log.d("STATS", "Total logs found: " + snapshot.getChildrenCount());
+
                         for (DataSnapshot log : snapshot.getChildren()) {
-                            String decision  = log.child("decision").getValue(String.class);
-                            Object tsRaw     = log.child("timestamp").getValue();
+                            String decision = log.child("decision").getValue(String.class);
+                            Object tsRaw    = log.child("timestamp").getValue();
 
                             if (!"allow".equals(decision) || tsRaw == null) continue;
 
                             try {
                                 Calendar c = Calendar.getInstance();
-
-                                // Handle both timestamp formats:
-                                // 1. String "2026-03-20T14:00:00" (from manual logs)
-                                // 2. Long millis (from ESP32)
                                 if (tsRaw instanceof Long) {
                                     c.setTimeInMillis((Long) tsRaw);
                                 } else {
@@ -209,9 +211,7 @@ public class AccountOverviewActivity extends AppCompatActivity {
                         Toast.makeText(AccountOverviewActivity.this,
                                 "Failed to load stats", Toast.LENGTH_SHORT).show();
                     }
-
                 });
-
     }
 
     private void buildPieChart(HashMap<String, Integer> roomCounts) {

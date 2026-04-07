@@ -13,6 +13,13 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -21,9 +28,13 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class LabDetailActivity extends AppCompatActivity {
 
@@ -34,6 +45,8 @@ public class LabDetailActivity extends AppCompatActivity {
     private TextView btnPrevDay;
     private TextView btnNextDay;
     private LinearLayout layoutScheduleList;
+    private BarChart barChart;
+    private TextView tvNoData;
 
     private DatabaseReference occupancyRef;
     private DatabaseReference scheduleRef;
@@ -83,10 +96,11 @@ public class LabDetailActivity extends AppCompatActivity {
 
         FirebaseDatabase database = FirebaseDatabase.getInstance();
         occupancyRef = database.getReference("occupancy").child(roomId);
-        scheduleRef = database.getReference("lab_schedule").child(scheduleRoomId);
+        scheduleRef  = database.getReference("lab_schedule").child(scheduleRoomId);
 
         loadOccupancy();
         loadScheduleForDate();
+        loadOccupancyHistory();
 
         btnPrevDay.setOnClickListener(v -> {
             selectedDate.add(Calendar.DAY_OF_MONTH, -1);
@@ -102,19 +116,20 @@ public class LabDetailActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        tvHeaderLabName = findViewById(R.id.tvHeaderLabName);
-        tvLabOccupancy = findViewById(R.id.tvLabOccupancy);
-        tvLabStatus = findViewById(R.id.tvLabStatus);
-        tvSelectedDate = findViewById(R.id.tvSelectedDate);
-        btnPrevDay = findViewById(R.id.btnPrevDay);
-        btnNextDay = findViewById(R.id.btnNextDay);
+        tvHeaderLabName   = findViewById(R.id.tvHeaderLabName);
+        tvLabOccupancy    = findViewById(R.id.tvLabOccupancy);
+        tvLabStatus       = findViewById(R.id.tvLabStatus);
+        tvSelectedDate    = findViewById(R.id.tvSelectedDate);
+        btnPrevDay        = findViewById(R.id.btnPrevDay);
+        btnNextDay        = findViewById(R.id.btnNextDay);
         layoutScheduleList = findViewById(R.id.layoutScheduleList);
+        barChart          = findViewById(R.id.barChart);
+        tvNoData          = findViewById(R.id.tvNoData);
     }
 
     private void setupToolbar() {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Lab Details");
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -130,14 +145,14 @@ public class LabDetailActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 Integer currentCount = snapshot.child("current_count").getValue(Integer.class);
-                Integer maxCapacity = snapshot.child("max_capacity").getValue(Integer.class);
-                String displayName = snapshot.child("display_name").getValue(String.class);
+                Integer maxCapacity  = snapshot.child("max_capacity").getValue(Integer.class);
+                String displayName   = snapshot.child("display_name").getValue(String.class);
 
                 if (currentCount == null) currentCount = 0;
-                if (maxCapacity == null) maxCapacity = 0;
+                if (maxCapacity == null)  maxCapacity  = 0;
 
                 currentOccupancyCount = currentCount;
-                currentMaxCapacity = maxCapacity;
+                currentMaxCapacity    = maxCapacity;
 
                 if (displayName != null && !displayName.trim().isEmpty()) {
                     tvHeaderLabName.setText(displayName);
@@ -148,12 +163,142 @@ public class LabDetailActivity extends AppCompatActivity {
                 tvLabOccupancy.setText(currentCount + " / " + maxCapacity);
                 refreshStatusUI();
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 tvLabOccupancy.setText("Unavailable");
             }
         });
+    }
+
+    // OCC-2.1 - Retrieve occupancy history
+    private void loadOccupancyHistory() {
+        FirebaseDatabase.getInstance().getReference("access_logs")
+                .orderByChild("lab_room")
+                .equalTo(roomId)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        Map<String, Integer> hourlyCount = new LinkedHashMap<>();
+                        for (int i = 0; i < 24; i++) {
+                            hourlyCount.put(String.format("%02d:00", i), 0);
+                        }
+
+                        SimpleDateFormat sdf = new SimpleDateFormat(
+                                "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+
+                        Calendar now = Calendar.getInstance();
+                        int currentMonth = now.get(Calendar.MONTH);
+                        int currentYear  = now.get(Calendar.YEAR);
+
+                        for (DataSnapshot log : snapshot.getChildren()) {
+                            String decision = log.child("decision").getValue(String.class);
+                            Object tsRaw    = log.child("timestamp").getValue();
+
+                            if (!"allow".equals(decision) || tsRaw == null) continue;
+
+                            try {
+                                Calendar c = Calendar.getInstance();
+                                if (tsRaw instanceof Long) {
+                                    c.setTimeInMillis((Long) tsRaw);
+                                } else {
+                                    Date d = sdf.parse(String.valueOf(tsRaw));
+                                    if (d == null) continue;
+                                    c.setTime(d);
+                                }
+                                if (c.get(Calendar.MONTH) == currentMonth
+                                        && c.get(Calendar.YEAR) == currentYear) {
+                                    int hour = c.get(Calendar.HOUR_OF_DAY);
+                                    String key = String.format("%02d:00", hour);
+                                    hourlyCount.put(key,
+                                            hourlyCount.getOrDefault(key, 0) + 1);
+                                }
+                            } catch (ParseException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        buildBarChart(hourlyCount);
+                    }
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {}
+                });
+    }
+
+    // OCC-2.2 - Build bar chart
+    private void buildBarChart(Map<String, Integer> hourlyCount) {
+        boolean hasData = false;
+        for (int v : hourlyCount.values()) {
+            if (v > 0) { hasData = true; break; }
+        }
+
+        if (!hasData) {
+            tvNoData.setVisibility(View.VISIBLE);
+            barChart.setVisibility(View.GONE);
+            return;
+        }
+
+        tvNoData.setVisibility(View.GONE);
+        barChart.setVisibility(View.VISIBLE);
+
+        List<BarEntry> entries = new ArrayList<>();
+        List<String>   labels  = new ArrayList<>();
+        int index = 0;
+
+        for (Map.Entry<String, Integer> entry : hourlyCount.entrySet()) {
+            int hour = Integer.parseInt(entry.getKey().split(":")[0]);
+            if (hour >= 7 && hour <= 22) {
+                entries.add(new BarEntry(index, entry.getValue()));
+                labels.add(entry.getKey());
+                index++;
+            }
+        }
+
+        BarDataSet dataSet = new BarDataSet(entries, "Visits per hour");
+        dataSet.setColor(Color.parseColor("#932339"));
+        dataSet.setDrawValues(false); // removes numbers on top of bars
+
+        BarData data = new BarData(dataSet);
+        data.setBarWidth(0.6f);
+
+        barChart.setData(data);
+        barChart.setFitBars(true);
+        barChart.getDescription().setEnabled(false);
+        barChart.getLegend().setEnabled(false);
+        barChart.setDrawGridBackground(false);
+        barChart.setDrawBorders(false);
+        barChart.setExtraBottomOffset(10f);
+        barChart.animateY(800);
+
+        // X axis
+        // X axis
+        XAxis xAxis = barChart.getXAxis();
+        xAxis.setValueFormatter(new IndexAxisValueFormatter(labels));
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setGranularity(1f);
+        xAxis.setDrawGridLines(false);
+        xAxis.setTextColor(Color.parseColor("#666666"));
+        xAxis.setTextSize(9f);
+        xAxis.setLabelRotationAngle(-45f);
+        xAxis.setLabelCount(Math.min(labels.size(), 8), true);
+        xAxis.setDrawAxisLine(true);
+        xAxis.setAvoidFirstLastClipping(true);
+        barChart.setExtraBottomOffset(20f);
+
+        // Y axis — whole numbers only
+        YAxis leftAxis = barChart.getAxisLeft();
+        leftAxis.setDrawGridLines(true);
+        leftAxis.setGridColor(Color.parseColor("#EEEEEE"));
+        leftAxis.setTextColor(Color.parseColor("#666666"));
+        leftAxis.setAxisMinimum(0f);
+        leftAxis.setGranularity(1f);
+        leftAxis.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                return String.valueOf((int) value);
+            }
+        });
+
+        barChart.getAxisRight().setEnabled(false);
+        barChart.invalidate();
     }
 
     private void loadScheduleForDate() {
@@ -170,16 +315,12 @@ public class LabDetailActivity extends AppCompatActivity {
                 Calendar now = Calendar.getInstance();
                 String todayString = firebaseDateFormat.format(now.getTime());
 
-                java.util.List<ScheduleSlot> slots = new java.util.ArrayList<>();
+                List<ScheduleSlot> slots = new ArrayList<>();
 
                 for (DataSnapshot slotSnapshot : snapshot.getChildren()) {
                     String startTime = slotSnapshot.child("start_time").getValue(String.class);
-                    String endTime = slotSnapshot.child("end_time").getValue(String.class);
-
-                    if (startTime == null || endTime == null) {
-                        continue;
-                    }
-
+                    String endTime   = slotSnapshot.child("end_time").getValue(String.class);
+                    if (startTime == null || endTime == null) continue;
                     slots.add(new ScheduleSlot(startTime, endTime));
                 }
 
@@ -189,37 +330,30 @@ public class LabDetailActivity extends AppCompatActivity {
                         Date d2 = timeFormat.parse(slot2.startTime);
                         if (d1 == null || d2 == null) return 0;
                         return d1.compareTo(d2);
-                    } catch (ParseException e) {
-                        return 0;
-                    }
+                    } catch (ParseException e) { return 0; }
                 });
 
                 for (ScheduleSlot slot : slots) {
                     addScheduleRow(slot.startTime, slot.endTime);
-
-                    if (firebaseDate.equals(todayString) && isCurrentTimeInRange(slot.startTime, slot.endTime)) {
+                    if (firebaseDate.equals(todayString)
+                            && isCurrentTimeInRange(slot.startTime, slot.endTime)) {
                         isScheduledNow = true;
                         slotText = slot.startTime + " - " + slot.endTime;
                     }
                 }
 
-                if (slots.isEmpty()) {
-                    addMessageRow("No schedule for this day");
-                }
+                if (slots.isEmpty()) addMessageRow("No schedule for this day");
 
                 currentIsScheduledNow = isScheduledNow;
-                currentSlotText = slotText;
-
+                currentSlotText       = slotText;
                 refreshStatusUI();
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 layoutScheduleList.removeAllViews();
                 addMessageRow("Could not load schedule");
-
                 currentIsScheduledNow = false;
-                currentSlotText = null;
+                currentSlotText       = null;
                 refreshStatusUI();
             }
         });
@@ -237,11 +371,9 @@ public class LabDetailActivity extends AppCompatActivity {
 
     private void addScheduleRow(String startTime, String endTime) {
         androidx.cardview.widget.CardView card = new androidx.cardview.widget.CardView(this);
-
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
+                LinearLayout.LayoutParams.WRAP_CONTENT);
         cardParams.setMargins(0, 0, 0, 12);
         card.setLayoutParams(cardParams);
         card.setRadius(20f);
@@ -251,8 +383,7 @@ public class LabDetailActivity extends AppCompatActivity {
         LinearLayout content = new LinearLayout(this);
         content.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        ));
+                LinearLayout.LayoutParams.WRAP_CONTENT));
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(24, 22, 24, 22);
 
@@ -276,18 +407,15 @@ public class LabDetailActivity extends AppCompatActivity {
         content.addView(tvTime);
         content.addView(tvTitle);
         content.addView(tvSubtitle);
-
         card.addView(content);
         layoutScheduleList.addView(card);
     }
 
     private void addMessageRow(String message) {
         androidx.cardview.widget.CardView card = new androidx.cardview.widget.CardView(this);
-
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
+                LinearLayout.LayoutParams.WRAP_CONTENT);
         cardParams.setMargins(0, 0, 0, 12);
         card.setLayoutParams(cardParams);
         card.setRadius(20f);
@@ -297,8 +425,7 @@ public class LabDetailActivity extends AppCompatActivity {
         TextView tv = new TextView(this);
         tv.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        ));
+                LinearLayout.LayoutParams.WRAP_CONTENT));
         tv.setPadding(24, 24, 24, 24);
         tv.setText(message);
         tv.setTextSize(14f);
@@ -310,52 +437,38 @@ public class LabDetailActivity extends AppCompatActivity {
 
     private boolean isCurrentTimeInRange(String start, String end) {
         try {
-            Date now = timeFormat.parse(timeFormat.format(Calendar.getInstance().getTime()));
+            Date now       = timeFormat.parse(timeFormat.format(Calendar.getInstance().getTime()));
             Date startTime = timeFormat.parse(start);
-            Date endTime = timeFormat.parse(end);
-
+            Date endTime   = timeFormat.parse(end);
             if (now == null || startTime == null || endTime == null) return false;
-
             return !now.before(startTime) && !now.after(endTime);
-        } catch (ParseException e) {
-            return false;
-        }
+        } catch (ParseException e) { return false; }
     }
 
     private String convertToScheduleRoomId(String occupancyRoomId) {
-        if (occupancyRoomId == null || occupancyRoomId.isEmpty()) {
-            return occupancyRoomId;
-        }
-
-        if (occupancyRoomId.matches("^H\\d{3}$")) {
+        if (occupancyRoomId == null || occupancyRoomId.isEmpty()) return occupancyRoomId;
+        if (occupancyRoomId.matches("^H\\d{3}$"))
             return "H-" + occupancyRoomId.substring(1);
-        }
-
         if (occupancyRoomId.matches("^H\\d{3}_\\d{2}$")) {
             String mainPart = occupancyRoomId.substring(1, 4);
-            String subPart = occupancyRoomId.substring(5);
+            String subPart  = occupancyRoomId.substring(5);
             return "H-" + mainPart + "." + subPart;
         }
-
         return occupancyRoomId;
     }
 
     private static class ScheduleSlot {
         String startTime;
         String endTime;
-
         ScheduleSlot(String startTime, String endTime) {
             this.startTime = startTime;
-            this.endTime = endTime;
+            this.endTime   = endTime;
         }
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
-        }
+        if (item.getItemId() == android.R.id.home) { finish(); return true; }
         return super.onOptionsItemSelected(item);
     }
 }

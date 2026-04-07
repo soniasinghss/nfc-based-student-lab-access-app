@@ -225,7 +225,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="16dp">
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -252,6 +253,17 @@
                             android:textColor="#22C55E"/>
 
                     </LinearLayout>
+
+                    <!-- View Full Card Details button -->
+                    <Button
+                        android:id="@+id/btnViewNfcCard"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="View Full Card Details"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:backgroundTint="#932339"/>
+
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
