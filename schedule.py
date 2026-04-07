@@ -1,4 +1,4 @@
-# This python scripts exctract the data from the official encs lab calendar
+# This python script exctracts the data from the official encs lab calendar
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
