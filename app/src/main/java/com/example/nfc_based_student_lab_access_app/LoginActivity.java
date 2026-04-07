@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -28,6 +29,13 @@ public class LoginActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Apply dark mode FIRST before super.onCreate
+        SharedPreferences themePrefs = getSharedPreferences("theme", MODE_PRIVATE);
+        boolean isDark = themePrefs.getBoolean("dark_mode", false);
+        AppCompatDelegate.setDefaultNightMode(
+                isDark ? AppCompatDelegate.MODE_NIGHT_YES
+                        : AppCompatDelegate.MODE_NIGHT_NO);
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
@@ -50,9 +58,11 @@ public class LoginActivity extends AppCompatActivity {
 
         tvRegister.setOnClickListener(v ->
                 startActivity(new Intent(LoginActivity.this, RegisterActivity.class)));
+
         TextView tvContactIt = findViewById(R.id.tvContactIt);
         tvContactIt.setOnClickListener(v -> {
-            android.net.Uri uri = android.net.Uri.parse("https://fcms.concordia.ca/idss/pages/account/passwordreset.aspx");
+            android.net.Uri uri = android.net.Uri.parse(
+                    "https://fcms.concordia.ca/idss/pages/account/passwordreset.aspx");
             Intent intent = new Intent(Intent.ACTION_VIEW, uri);
             startActivity(intent);
         });
@@ -107,7 +117,8 @@ public class LoginActivity extends AppCompatActivity {
                         } else {
                             intent = new Intent(LoginActivity.this, UserActivity.class);
                         }
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                                Intent.FLAG_ACTIVITY_CLEAR_TASK);
                         startActivity(intent);
                         finish();
                     }

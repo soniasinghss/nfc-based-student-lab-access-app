@@ -55,7 +55,14 @@
                             android:textStyle="bold"/>
 
                     </LinearLayout>
-
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/btnDarkMode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:thumbTint="#FFFFFF"
+                        android:trackTint="#B71C1C"
+                        app:showText="false"/>
                     <Button
                         android:id="@+id/btnSignOut"
                         android:text="Sign Out"

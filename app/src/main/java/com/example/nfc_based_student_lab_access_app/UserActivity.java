@@ -15,9 +15,11 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -81,8 +83,21 @@ public class UserActivity extends AppCompatActivity {
 
         findViewById(R.id.cvAccountOverview).setOnClickListener(v ->
                 startActivity(new Intent(UserActivity.this, AccountOverviewActivity.class)));
+
         findViewById(R.id.cvMap).setOnClickListener(v ->
                 startActivity(new Intent(UserActivity.this, MapActivity.class)));
+
+        // Dark mode toggle
+        SharedPreferences themePrefs = getSharedPreferences("theme", MODE_PRIVATE);
+        boolean isDark = themePrefs.getBoolean("dark_mode", false);
+        SwitchMaterial switchDarkMode = findViewById(R.id.btnDarkMode);
+        switchDarkMode.setChecked(isDark);
+        switchDarkMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            themePrefs.edit().putBoolean("dark_mode", isChecked).apply();
+            AppCompatDelegate.setDefaultNightMode(
+                    isChecked ? AppCompatDelegate.MODE_NIGHT_YES
+                            : AppCompatDelegate.MODE_NIGHT_NO);
+        });
 
         loadLabRooms();
 
@@ -112,9 +127,7 @@ public class UserActivity extends AppCompatActivity {
                 allLabRooms.clear();
                 for (DataSnapshot room : snapshot.getChildren()) {
                     String roomId = room.getKey();
-                    if (roomId != null) {
-                        allLabRooms.add(roomId);
-                    }
+                    if (roomId != null) allLabRooms.add(roomId);
                 }
                 llLabRooms.removeAllViews();
                 llLabRooms.setVisibility(View.GONE);
@@ -138,14 +151,12 @@ public class UserActivity extends AppCompatActivity {
         }
 
         boolean foundMatch = false;
-
         for (String roomId : allLabRooms) {
             if (roomId != null && roomId.toLowerCase().contains(query)) {
                 addRoomCard(roomId);
                 foundMatch = true;
             }
         }
-
         llLabRooms.setVisibility(foundMatch ? View.VISIBLE : View.GONE);
     }
 
@@ -165,14 +176,12 @@ public class UserActivity extends AppCompatActivity {
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
         row.setPadding(40, 40, 40, 40);
 
-        // Status dot
         android.view.View dot = new android.view.View(this);
         LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(24, 24);
         dotParams.setMargins(0, 0, 36, 0);
         dot.setLayoutParams(dotParams);
         dot.setBackgroundColor(Color.parseColor("#22C55E"));
 
-        // Room info
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
         info.setLayoutParams(new LinearLayout.LayoutParams(
@@ -192,7 +201,6 @@ public class UserActivity extends AppCompatActivity {
         info.addView(tvName);
         info.addView(tvOccupancy);
 
-        // Bell icon
         TextView tvBell = new TextView(this);
         tvBell.setText("🔔");
         tvBell.setTextSize(20);
@@ -206,7 +214,6 @@ public class UserActivity extends AppCompatActivity {
         row.addView(tvBell);
         card.addView(row);
 
-        // Live occupancy listener
         ValueEventListener listener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -215,7 +222,6 @@ public class UserActivity extends AppCompatActivity {
 
                 if (count != null && max != null) {
                     tvOccupancy.setText("Occupancy: " + count + " / " + max);
-
                     boolean isFull = count >= max;
                     dot.setBackgroundColor(isFull
                             ? Color.parseColor("#EF4444")
@@ -233,7 +239,6 @@ public class UserActivity extends AppCompatActivity {
                                 roomId.toUpperCase() + " has space — unsubscribed",
                                 Toast.LENGTH_SHORT).show();
                     }
-
                     labWasFull.put(roomId, isFull);
                 } else {
                     tvOccupancy.setText("Occupancy: unavailable");
@@ -247,15 +252,10 @@ public class UserActivity extends AppCompatActivity {
 
         mDatabase.child("occupancy").child(roomId).addValueEventListener(listener);
         labListeners.put(roomId, listener);
-
-        // Navigate to OccupancyHistoryActivity on tap
         card.setOnClickListener(v -> checkRoomOccupancy(roomId));
         llLabRooms.addView(card);
     }
 
-    // ==========================================
-    // SUBSCRIPTION HELPERS
-    // ==========================================
     private SharedPreferences getSubPrefs() {
         return getSharedPreferences(PREFS_SUBSCRIPTIONS, MODE_PRIVATE);
     }
@@ -289,9 +289,6 @@ public class UserActivity extends AppCompatActivity {
         updateBellState(tvBell, roomId);
     }
 
-    // ==========================================
-    // PROFILE & STATS
-    // ==========================================
     private void fetchStudentProfile(String authUid) {
         mDatabase.child("authorized_uids")
                 .addListenerForSingleValueEvent(new ValueEventListener() {
@@ -308,6 +305,8 @@ public class UserActivity extends AppCompatActivity {
                                 TextView tvUserName = findViewById(R.id.tvUserName);
                                 if (name != null && tvUserName != null)
                                     tvUserName.setText(name);
+
+                                calculateUserStats(nfcUid);
                                 break;
                             }
                         }
@@ -394,7 +393,6 @@ public class UserActivity extends AppCompatActivity {
         if (tvMostVisited != null) tvMostVisited.setText(best);
     }
 
-    // Navigate to OccupancyHistoryActivity
     private void checkRoomOccupancy(String roomId) {
         Intent intent = new Intent(this, LabDetailActivity.class);
         intent.putExtra("room_id", roomId);
