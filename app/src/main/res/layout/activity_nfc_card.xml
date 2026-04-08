@@ -284,10 +284,11 @@
                     android:padding="16dp">
 
                     <TextView
+                        android:id="@+id/tvAccessRoomLabel"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Lab 101"
+                        android:text="Assigned Lab"
                         android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="#1A1A1A"/>
