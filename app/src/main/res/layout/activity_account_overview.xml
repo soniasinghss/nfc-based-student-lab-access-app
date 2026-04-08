@@ -236,10 +236,11 @@
                             android:layout_marginEnd="12dp"/>
 
                         <TextView
+                            android:id="@+id/tvAccountLabLabel"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Lab 101 Access"
+                            android:text="Lab Access"
                             android:textSize="13sp"
                             android:textColor="#444444"/>
 
