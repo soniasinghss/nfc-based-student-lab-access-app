@@ -58,7 +58,6 @@ public class LabDetailActivity extends AppCompatActivity {
     private Integer currentOccupancyCount = null;
     private Integer currentMaxCapacity = null;
     private boolean currentIsScheduledNow = false;
-    private String currentSlotText = null;
 
     private final SimpleDateFormat firebaseDateFormat =
             new SimpleDateFormat("yyyy-MM-dd", Locale.CANADA);
@@ -88,6 +87,7 @@ public class LabDetailActivity extends AppCompatActivity {
             return;
         }
 
+        roomId = roomId.trim();
         scheduleRoomId = convertToScheduleRoomId(roomId);
         selectedDate = Calendar.getInstance();
 
@@ -96,9 +96,10 @@ public class LabDetailActivity extends AppCompatActivity {
 
         FirebaseDatabase database = FirebaseDatabase.getInstance();
         occupancyRef = database.getReference("occupancy").child(roomId);
-        scheduleRef  = database.getReference("lab_schedule").child(scheduleRoomId);
+        scheduleRef = database.getReference("lab_schedule").child(scheduleRoomId);
 
         loadOccupancy();
+        loadCurrentStatus();
         loadScheduleForDate();
         loadOccupancyHistory();
 
@@ -116,15 +117,15 @@ public class LabDetailActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        tvHeaderLabName   = findViewById(R.id.tvHeaderLabName);
-        tvLabOccupancy    = findViewById(R.id.tvLabOccupancy);
-        tvLabStatus       = findViewById(R.id.tvLabStatus);
-        tvSelectedDate    = findViewById(R.id.tvSelectedDate);
-        btnPrevDay        = findViewById(R.id.btnPrevDay);
-        btnNextDay        = findViewById(R.id.btnNextDay);
+        tvHeaderLabName = findViewById(R.id.tvHeaderLabName);
+        tvLabOccupancy = findViewById(R.id.tvLabOccupancy);
+        tvLabStatus = findViewById(R.id.tvLabStatus);
+        tvSelectedDate = findViewById(R.id.tvSelectedDate);
+        btnPrevDay = findViewById(R.id.btnPrevDay);
+        btnNextDay = findViewById(R.id.btnNextDay);
         layoutScheduleList = findViewById(R.id.layoutScheduleList);
-        barChart          = findViewById(R.id.barChart);
-        tvNoData          = findViewById(R.id.tvNoData);
+        barChart = findViewById(R.id.barChart);
+        tvNoData = findViewById(R.id.tvNoData);
     }
 
     private void setupToolbar() {
@@ -145,14 +146,14 @@ public class LabDetailActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 Integer currentCount = snapshot.child("current_count").getValue(Integer.class);
-                Integer maxCapacity  = snapshot.child("max_capacity").getValue(Integer.class);
-                String displayName   = snapshot.child("display_name").getValue(String.class);
+                Integer maxCapacity = snapshot.child("max_capacity").getValue(Integer.class);
+                String displayName = snapshot.child("display_name").getValue(String.class);
 
                 if (currentCount == null) currentCount = 0;
-                if (maxCapacity == null)  maxCapacity  = 0;
+                if (maxCapacity == null) maxCapacity = 0;
 
                 currentOccupancyCount = currentCount;
-                currentMaxCapacity    = maxCapacity;
+                currentMaxCapacity = maxCapacity;
 
                 if (displayName != null && !displayName.trim().isEmpty()) {
                     tvHeaderLabName.setText(displayName);
@@ -163,6 +164,7 @@ public class LabDetailActivity extends AppCompatActivity {
                 tvLabOccupancy.setText(currentCount + " / " + maxCapacity);
                 refreshStatusUI();
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 tvLabOccupancy.setText("Unavailable");
@@ -170,11 +172,94 @@ public class LabDetailActivity extends AppCompatActivity {
         });
     }
 
-    // OCC-2.1 - Retrieve occupancy history
+    private void loadCurrentStatus() {
+        String today = firebaseDateFormat.format(Calendar.getInstance().getTime());
+
+        scheduleRef.child(today).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                boolean isScheduledNow = false;
+
+                for (DataSnapshot slot : snapshot.getChildren()) {
+                    String start = slot.child("start_time").getValue(String.class);
+                    String end = slot.child("end_time").getValue(String.class);
+
+                    if (start != null && end != null && isCurrentTimeInRange(start, end)) {
+                        isScheduledNow = true;
+                        break;
+                    }
+                }
+
+                currentIsScheduledNow = isScheduledNow;
+                refreshStatusUI();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                currentIsScheduledNow = false;
+                refreshStatusUI();
+            }
+        });
+    }
+
+    private void loadScheduleForDate() {
+        String firebaseDate = firebaseDateFormat.format(selectedDate.getTime());
+
+        scheduleRef.child(firebaseDate).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                layoutScheduleList.removeAllViews();
+
+                List<ScheduleSlot> slots = new ArrayList<>();
+
+                for (DataSnapshot slotSnapshot : snapshot.getChildren()) {
+                    String startTime = slotSnapshot.child("start_time").getValue(String.class);
+                    String endTime = slotSnapshot.child("end_time").getValue(String.class);
+
+                    if (startTime == null || endTime == null) continue;
+                    slots.add(new ScheduleSlot(startTime, endTime));
+                }
+
+                java.util.Collections.sort(slots, (slot1, slot2) -> {
+                    try {
+                        Date d1 = timeFormat.parse(slot1.startTime);
+                        Date d2 = timeFormat.parse(slot2.startTime);
+                        if (d1 == null || d2 == null) return 0;
+                        return d1.compareTo(d2);
+                    } catch (ParseException e) {
+                        return 0;
+                    }
+                });
+
+                for (ScheduleSlot slot : slots) {
+                    addScheduleRow(slot.startTime, slot.endTime);
+                }
+
+                if (slots.isEmpty()) {
+                    addMessageRow("No schedule for this day");
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                layoutScheduleList.removeAllViews();
+                addMessageRow("Could not load schedule");
+            }
+        });
+    }
+
+    private void refreshStatusUI() {
+        if (currentIsScheduledNow) {
+            tvLabStatus.setText("Not available");
+            tvLabStatus.setTextColor(Color.parseColor("#932339"));
+        } else {
+            tvLabStatus.setText("Available");
+            tvLabStatus.setTextColor(Color.parseColor("#22C55E"));
+        }
+    }
+
     private void loadOccupancyHistory() {
         FirebaseDatabase.getInstance().getReference("access_logs")
-                .orderByChild("lab_room")
-                .equalTo(roomId)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -188,16 +273,27 @@ public class LabDetailActivity extends AppCompatActivity {
 
                         Calendar now = Calendar.getInstance();
                         int currentMonth = now.get(Calendar.MONTH);
-                        int currentYear  = now.get(Calendar.YEAR);
+                        int currentYear = now.get(Calendar.YEAR);
+
+                        String normalizedCurrentRoom = normalizeRoomId(roomId);
 
                         for (DataSnapshot log : snapshot.getChildren()) {
                             String decision = log.child("decision").getValue(String.class);
-                            Object tsRaw    = log.child("timestamp").getValue();
+                            Object tsRaw = log.child("timestamp").getValue();
+                            Object labRoomRaw = log.child("lab_room").getValue();
 
-                            if (!"allow".equals(decision) || tsRaw == null) continue;
+                            if (!"allow".equalsIgnoreCase(decision) || tsRaw == null || labRoomRaw == null) {
+                                continue;
+                            }
+
+                            String logRoom = String.valueOf(labRoomRaw).trim();
+                            if (!normalizeRoomId(logRoom).equals(normalizedCurrentRoom)) {
+                                continue;
+                            }
 
                             try {
                                 Calendar c = Calendar.getInstance();
+
                                 if (tsRaw instanceof Long) {
                                     c.setTimeInMillis((Long) tsRaw);
                                 } else {
@@ -205,29 +301,48 @@ public class LabDetailActivity extends AppCompatActivity {
                                     if (d == null) continue;
                                     c.setTime(d);
                                 }
+
                                 if (c.get(Calendar.MONTH) == currentMonth
                                         && c.get(Calendar.YEAR) == currentYear) {
                                     int hour = c.get(Calendar.HOUR_OF_DAY);
                                     String key = String.format("%02d:00", hour);
-                                    hourlyCount.put(key,
-                                            hourlyCount.getOrDefault(key, 0) + 1);
+                                    hourlyCount.put(key, hourlyCount.get(key) + 1);
                                 }
+
                             } catch (ParseException e) {
                                 e.printStackTrace();
                             }
                         }
+
                         buildBarChart(hourlyCount);
                     }
+
                     @Override
-                    public void onCancelled(@NonNull DatabaseError error) {}
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        tvNoData.setVisibility(View.VISIBLE);
+                        barChart.setVisibility(View.GONE);
+                    }
                 });
     }
 
-    // OCC-2.2 - Build bar chart
+    private String normalizeRoomId(String room) {
+        if (room == null) return "";
+
+        String normalized = room.trim().toUpperCase();
+        normalized = normalized.replace(" ", "");
+        normalized = normalized.replace("-", "");
+        normalized = normalized.replace(".", "_");
+
+        return normalized;
+    }
+
     private void buildBarChart(Map<String, Integer> hourlyCount) {
         boolean hasData = false;
         for (int v : hourlyCount.values()) {
-            if (v > 0) { hasData = true; break; }
+            if (v > 0) {
+                hasData = true;
+                break;
+            }
         }
 
         if (!hasData) {
@@ -240,7 +355,7 @@ public class LabDetailActivity extends AppCompatActivity {
         barChart.setVisibility(View.VISIBLE);
 
         List<BarEntry> entries = new ArrayList<>();
-        List<String>   labels  = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
         int index = 0;
 
         for (Map.Entry<String, Integer> entry : hourlyCount.entrySet()) {
@@ -254,7 +369,7 @@ public class LabDetailActivity extends AppCompatActivity {
 
         BarDataSet dataSet = new BarDataSet(entries, "Visits per hour");
         dataSet.setColor(Color.parseColor("#932339"));
-        dataSet.setDrawValues(false); // removes numbers on top of bars
+        dataSet.setDrawValues(false);
 
         BarData data = new BarData(dataSet);
         data.setBarWidth(0.6f);
@@ -268,8 +383,6 @@ public class LabDetailActivity extends AppCompatActivity {
         barChart.setExtraBottomOffset(10f);
         barChart.animateY(800);
 
-        // X axis
-        // X axis
         XAxis xAxis = barChart.getXAxis();
         xAxis.setValueFormatter(new IndexAxisValueFormatter(labels));
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
@@ -283,7 +396,6 @@ public class LabDetailActivity extends AppCompatActivity {
         xAxis.setAvoidFirstLastClipping(true);
         barChart.setExtraBottomOffset(20f);
 
-        // Y axis — whole numbers only
         YAxis leftAxis = barChart.getAxisLeft();
         leftAxis.setDrawGridLines(true);
         leftAxis.setGridColor(Color.parseColor("#EEEEEE"));
@@ -299,74 +411,6 @@ public class LabDetailActivity extends AppCompatActivity {
 
         barChart.getAxisRight().setEnabled(false);
         barChart.invalidate();
-    }
-
-    private void loadScheduleForDate() {
-        String firebaseDate = firebaseDateFormat.format(selectedDate.getTime());
-
-        scheduleRef.child(firebaseDate).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                layoutScheduleList.removeAllViews();
-
-                boolean isScheduledNow = false;
-                String slotText = null;
-
-                Calendar now = Calendar.getInstance();
-                String todayString = firebaseDateFormat.format(now.getTime());
-
-                List<ScheduleSlot> slots = new ArrayList<>();
-
-                for (DataSnapshot slotSnapshot : snapshot.getChildren()) {
-                    String startTime = slotSnapshot.child("start_time").getValue(String.class);
-                    String endTime   = slotSnapshot.child("end_time").getValue(String.class);
-                    if (startTime == null || endTime == null) continue;
-                    slots.add(new ScheduleSlot(startTime, endTime));
-                }
-
-                java.util.Collections.sort(slots, (slot1, slot2) -> {
-                    try {
-                        Date d1 = timeFormat.parse(slot1.startTime);
-                        Date d2 = timeFormat.parse(slot2.startTime);
-                        if (d1 == null || d2 == null) return 0;
-                        return d1.compareTo(d2);
-                    } catch (ParseException e) { return 0; }
-                });
-
-                for (ScheduleSlot slot : slots) {
-                    addScheduleRow(slot.startTime, slot.endTime);
-                    if (firebaseDate.equals(todayString)
-                            && isCurrentTimeInRange(slot.startTime, slot.endTime)) {
-                        isScheduledNow = true;
-                        slotText = slot.startTime + " - " + slot.endTime;
-                    }
-                }
-
-                if (slots.isEmpty()) addMessageRow("No schedule for this day");
-
-                currentIsScheduledNow = isScheduledNow;
-                currentSlotText       = slotText;
-                refreshStatusUI();
-            }
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                layoutScheduleList.removeAllViews();
-                addMessageRow("Could not load schedule");
-                currentIsScheduledNow = false;
-                currentSlotText       = null;
-                refreshStatusUI();
-            }
-        });
-    }
-
-    private void refreshStatusUI() {
-        if (currentIsScheduledNow) {
-            tvLabStatus.setText("Not available");
-            tvLabStatus.setTextColor(Color.parseColor("#932339"));
-        } else {
-            tvLabStatus.setText("Available");
-            tvLabStatus.setTextColor(Color.parseColor("#22C55E"));
-        }
     }
 
     private void addScheduleRow(String startTime, String endTime) {
@@ -437,38 +481,57 @@ public class LabDetailActivity extends AppCompatActivity {
 
     private boolean isCurrentTimeInRange(String start, String end) {
         try {
-            Date now       = timeFormat.parse(timeFormat.format(Calendar.getInstance().getTime()));
+            Date now = timeFormat.parse(timeFormat.format(Calendar.getInstance().getTime()));
             Date startTime = timeFormat.parse(start);
-            Date endTime   = timeFormat.parse(end);
+            Date endTime = timeFormat.parse(end);
+
             if (now == null || startTime == null || endTime == null) return false;
+
             return !now.before(startTime) && !now.after(endTime);
-        } catch (ParseException e) { return false; }
+        } catch (ParseException e) {
+            return false;
+        }
     }
 
     private String convertToScheduleRoomId(String occupancyRoomId) {
         if (occupancyRoomId == null || occupancyRoomId.isEmpty()) return occupancyRoomId;
-        if (occupancyRoomId.matches("^H\\d{3}$"))
+
+        if (occupancyRoomId.matches("^H\\d{3}$")) {
             return "H-" + occupancyRoomId.substring(1);
+        }
+
         if (occupancyRoomId.matches("^H\\d{3}_\\d{2}$")) {
             String mainPart = occupancyRoomId.substring(1, 4);
-            String subPart  = occupancyRoomId.substring(5);
+            String subPart = occupancyRoomId.substring(5);
             return "H-" + mainPart + "." + subPart;
         }
+
         return occupancyRoomId;
     }
 
     private static class ScheduleSlot {
         String startTime;
         String endTime;
+
         ScheduleSlot(String startTime, String endTime) {
             this.startTime = startTime;
-            this.endTime   = endTime;
+            this.endTime = endTime;
         }
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        loadCurrentStatus();
+        loadOccupancyHistory();
+    }
+
+    @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == android.R.id.home) { finish(); return true; }
+        if (item.getItemId() == android.R.id.home) {
+            finish();
+            return true;
+        }
         return super.onOptionsItemSelected(item);
     }
 }
