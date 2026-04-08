@@ -10,6 +10,7 @@ import android.text.TextWatcher;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -50,6 +51,7 @@ public class AccessLogsActivity extends AppCompatActivity {
     private TextView tvCurrentRange;
 
     private DataSnapshot usersSnapshot;
+    private DataSnapshot currentLogsSnapshot; // NEW: Added to cache the logs locally for instant searching
     private long weekStartMillis, weekEndMillis;
     private String startIso, endIso;
     private ValueEventListener activeLogListener;
@@ -86,19 +88,34 @@ public class AccessLogsActivity extends AppCompatActivity {
         btnSelectWeek.setOnClickListener(v -> showWeekPicker());
         btnDownloadTxt.setOnClickListener(v -> downloadAllTimeLogsAsTxt());
 
+        // NEW: Triggers a local UI update whenever text is typed
         etLogSearch.addTextChangedListener(new TextWatcher() {
-            @Override public void afterTextChanged(Editable s) { /* Logic handled by Firebase listener refresh */ }
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (currentLogsSnapshot != null) {
+                    renderUI(currentLogsSnapshot);
+                }
+            }
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+        });
+
+        // NEW: Triggers a local UI update if the user changes the search filter (e.g. Name -> UID)
+        spinnerSearchMode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (currentLogsSnapshot != null) {
+                    renderUI(currentLogsSnapshot);
+                }
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
         });
     }
 
     private void showWeekPicker() {
-        // Material Range Picker for the "Autofilled Block" look
         MaterialDatePicker.Builder<Pair<Long, Long>> builder = MaterialDatePicker.Builder.dateRangePicker();
         builder.setTitleText("Select Week to View");
-
-        // Pre-select the current week range
         builder.setSelection(new Pair<>(weekStartMillis, weekEndMillis));
 
         final MaterialDatePicker<Pair<Long, Long>> picker = builder.build();
@@ -108,8 +125,6 @@ public class AccessLogsActivity extends AppCompatActivity {
             if (selection != null && selection.first != null) {
                 Calendar cal = Calendar.getInstance();
                 cal.setTimeInMillis(selection.first);
-
-                // Force selection to snap to a clean Sunday-Saturday block
                 setWeekRangeFromCalendar(cal);
                 fetchWeeklyLogs();
             }
@@ -120,7 +135,6 @@ public class AccessLogsActivity extends AppCompatActivity {
         SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
         SimpleDateFormat displayFormat = new SimpleDateFormat("MMM dd", Locale.getDefault());
 
-        // Snap to Sunday morning
         cal.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY);
         cal.set(Calendar.HOUR_OF_DAY, 0);
         cal.set(Calendar.MINUTE, 0);
@@ -130,7 +144,6 @@ public class AccessLogsActivity extends AppCompatActivity {
         startIso = isoFormat.format(cal.getTime());
         String startDisplay = displayFormat.format(cal.getTime());
 
-        // Snap to Saturday night
         cal.add(Calendar.DAY_OF_WEEK, 6);
         cal.set(Calendar.HOUR_OF_DAY, 23);
         cal.set(Calendar.MINUTE, 59);
@@ -152,7 +165,6 @@ public class AccessLogsActivity extends AppCompatActivity {
     }
 
     private void fetchWeeklyLogs() {
-        // Clean up old listener to save phone battery/data
         if (currentQuery != null && activeLogListener != null) {
             currentQuery.removeEventListener(activeLogListener);
         }
@@ -163,7 +175,6 @@ public class AccessLogsActivity extends AppCompatActivity {
         loading.setGravity(Gravity.CENTER);
         llLogsContainer.addView(loading);
 
-        // Server-Side: Only download the specific week
         currentQuery = db.child("access_logs")
                 .orderByChild("timestamp")
                 .startAt(startIso)
@@ -171,7 +182,11 @@ public class AccessLogsActivity extends AppCompatActivity {
 
         activeLogListener = new ValueEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) { renderUI(snapshot); }
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                // NEW: Cache the downloaded logs before sending them to the UI
+                currentLogsSnapshot = snapshot;
+                renderUI(snapshot);
+            }
             @Override public void onCancelled(@NonNull DatabaseError error) {}
         };
         currentQuery.addValueEventListener(activeLogListener);
@@ -186,7 +201,6 @@ public class AccessLogsActivity extends AppCompatActivity {
 
         int logCount = 0;
         for (DataSnapshot log : snapshot.getChildren()) {
-            // Safe parsing to avoid Long-to-String crashes
             String uid = String.valueOf(log.child("uid").getValue());
             String time = String.valueOf(log.child("timestamp").getValue());
             String decision = String.valueOf(log.child("decision").getValue());
@@ -212,7 +226,7 @@ public class AccessLogsActivity extends AppCompatActivity {
         }
         if (logCount == 0) {
             TextView empty = new TextView(this);
-            empty.setText("No activity this week.");
+            empty.setText(query.isEmpty() ? "No activity this week." : "No matching logs found.");
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(0, 100, 0, 0);
             llLogsContainer.addView(empty);
@@ -276,7 +290,6 @@ public class AccessLogsActivity extends AppCompatActivity {
 
     private void downloadAllTimeLogsAsTxt() {
         Toast.makeText(this, "Fetching all data...", Toast.LENGTH_SHORT).show();
-        // One-time fetch of everything for the .txt report
         db.child("access_logs").get().addOnSuccessListener(snapshot -> {
             try {
                 StringBuilder sb = new StringBuilder();

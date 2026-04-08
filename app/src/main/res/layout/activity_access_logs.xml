@@ -77,10 +77,10 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="JSON"
-                app:strokeColor="#7B1A2E"
+                android:text="Text File"
                 android:textColor="#7B1A2E"
-                android:textSize="10sp"/>
+                android:textSize="10sp"
+                app:strokeColor="#7B1A2E" />
         </LinearLayout>
     </LinearLayout>
 

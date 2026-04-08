@@ -50,6 +50,7 @@ public class LoginActivity extends AppCompatActivity {
 
         tvRegister.setOnClickListener(v ->
                 startActivity(new Intent(LoginActivity.this, RegisterActivity.class)));
+
         TextView tvContactIt = findViewById(R.id.tvContactIt);
         tvContactIt.setOnClickListener(v -> {
             android.net.Uri uri = android.net.Uri.parse("https://fcms.concordia.ca/idss/pages/account/passwordreset.aspx");
@@ -85,8 +86,7 @@ public class LoginActivity extends AppCompatActivity {
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener(authResult -> {
                     String uid = authResult.getUser().getUid();
-                    SharedPreferences prefs = getSharedPreferences("session", MODE_PRIVATE);
-                    prefs.edit().putString("uid", uid).apply();
+                    // Don't save SharedPreferences yet - wait until they are fully authorized
                     routeUser(uid);
                 })
                 .addOnFailureListener(e -> {
@@ -96,26 +96,64 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void routeUser(String uid) {
+        // Step 1: Check if the user is an admin
         FirebaseDatabase.getInstance().getReference()
                 .child("admins").child(uid)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        Intent intent;
                         if (snapshot.exists()) {
-                            intent = new Intent(LoginActivity.this, AdminActivity.class);
+                            // User is an Admin
+                            saveSessionAndLaunch(uid, AdminActivity.class);
                         } else {
-                            intent = new Intent(LoginActivity.this, UserActivity.class);
+                            // Step 2: If not an admin, check if they are an authorized student
+                            checkIfAuthorizedStudent(uid);
                         }
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                        startActivity(intent);
-                        finish();
                     }
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
                         tvError.setVisibility(View.VISIBLE);
-                        tvError.setText("Error checking role. Try again.");
+                        tvError.setText("Error checking admin role. Try again.");
                     }
                 });
+    }
+
+    private void checkIfAuthorizedStudent(String uid) {
+        // Query the authorized_uids node to find any child where "auth_uid" matches the logged-in user
+        FirebaseDatabase.getInstance().getReference()
+                .child("authorized_uids")
+                .orderByChild("auth_uid").equalTo(uid)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            // A match was found! The student is authorized.
+                            saveSessionAndLaunch(uid, UserActivity.class);
+                        } else {
+                            // No match found. The student is NOT authorized.
+                            mAuth.signOut(); // Force log them out
+
+                            tvError.setVisibility(View.VISIBLE);
+                            tvError.setText("Access Denied: Your account is not linked to an authorized student UID.");
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        tvError.setVisibility(View.VISIBLE);
+                        tvError.setText("Error verifying student authorization.");
+                    }
+                });
+    }
+
+    private void saveSessionAndLaunch(String uid, Class<?> activityClass) {
+        // Only save session state if they actually pass the authorization checks
+        SharedPreferences prefs = getSharedPreferences("session", MODE_PRIVATE);
+        prefs.edit().putString("uid", uid).apply();
+
+        Intent intent = new Intent(LoginActivity.this, activityClass);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 }
