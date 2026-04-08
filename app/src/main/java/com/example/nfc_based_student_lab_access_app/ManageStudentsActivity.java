@@ -109,9 +109,24 @@ public class ManageStudentsActivity extends AppCompatActivity {
             return;
         }
 
+        // --- NEW INPUT VALIDATION ---
+        if (name.length() > 20) {
+            tvStatus.setText("❌ Error: Name cannot exceed 20 characters.");
+            return;
+        }
+        if (name.matches(".*\\d.*")) { // Fails if any digits are found in the name
+            tvStatus.setText("❌ Error: Name cannot contain numbers.");
+            return;
+        }
+        if (sid.length() != 8 || !sid.matches("\\d+")) { // Fails if not exactly 9 chars or has non-digits
+            tvStatus.setText("❌ Error: Student ID must be exactly 8 numbers.");
+            return;
+        }
+        // ----------------------------
+
         tvStatus.setText("Checking database...");
 
-        // NEW: Check if user already exists before adding
+        // Check if user already exists before adding
         db.child("authorized_uids").child(uid).get().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 if (task.getResult().exists()) {
